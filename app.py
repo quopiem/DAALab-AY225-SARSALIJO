@@ -1,4 +1,5 @@
 import time
+import os
 import tkinter as tk
 from tkinter import scrolledtext, messagebox, ttk
 import threading
@@ -78,6 +79,98 @@ def quick_sort_descending(arr):
     
     end_time = time.time()
     time_taken = end_time - start_time
+
+    return arr, time_taken
+
+
+def insertion_sort_descending(arr):
+    """
+    Sorts an array using the insertion sort algorithm in DESCENDING order.
+    
+    Args:
+        arr: List of comparable elements to sort
+        
+    Returns:
+        Tuple of (sorted list, time taken in seconds)
+    """
+    start_time = time.time()
+    n = len(arr)
+    
+    for i in range(1, n):
+        key = arr[i]
+        j = i - 1
+        
+        # Move elements that are smaller than key to one position ahead
+        while j >= 0 and arr[j] < key:
+            arr[j + 1] = arr[j]
+            j -= 1
+        arr[j + 1] = key
+    
+    end_time = time.time()
+    time_taken = end_time - start_time
+    
+    return arr, time_taken
+
+
+def merge_sort_descending(arr):
+    """
+    Sorts an array using the merge sort algorithm in DESCENDING order.
+    Uses iterative approach to avoid recursion depth issues.
+    
+    Args:
+        arr: List of comparable elements to sort
+        
+    Returns:
+        Tuple of (sorted list, time taken in seconds)
+    """
+    start_time = time.time()
+    n = len(arr)
+    
+    if n <= 1:
+        return arr, time.time() - start_time
+    
+    # Iterative merge sort (bottom-up)
+    curr_size = 1
+    
+    while curr_size < n:
+        left = 0
+        while left < n:
+            mid = min(left + curr_size - 1, n - 1)
+            right = min(left + 2 * curr_size - 1, n - 1)
+            
+            if mid < right:
+                # Merge arr[left...mid] and arr[mid+1...right] in descending order
+                left_arr = arr[left:mid + 1]
+                right_arr = arr[mid + 1:right + 1]
+                
+                i = j = 0
+                k = left
+                
+                while i < len(left_arr) and j < len(right_arr):
+                    if left_arr[i] >= right_arr[j]:  # >= for descending order
+                        arr[k] = left_arr[i]
+                        i += 1
+                    else:
+                        arr[k] = right_arr[j]
+                        j += 1
+                    k += 1
+                
+                while i < len(left_arr):
+                    arr[k] = left_arr[i]
+                    i += 1
+                    k += 1
+                
+                while j < len(right_arr):
+                    arr[k] = right_arr[j]
+                    j += 1
+                    k += 1
+            
+            left += 2 * curr_size
+        
+        curr_size *= 2
+    
+    end_time = time.time()
+    time_taken = end_time - start_time
     
     return arr, time_taken
 
@@ -113,9 +206,12 @@ def load_data_from_file(filename):
 class BubbleSortGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("🔢 Bubble Sort Visualizer - Descending Order")
+        self.root.title("🔢 Sorting Algorithm Visualizer - Descending Order")
         self.root.geometry("1400x900")  # Larger window
         self.root.resizable(True, True)
+        
+        # Selected sorting algorithm
+        self.selected_algorithm = tk.StringVar(value="Bubble Sort")
         
         # Color Scheme
         self.primary_color = "#1e3a8a"      # Dark Blue
@@ -192,12 +288,12 @@ class BubbleSortGUI:
         header = tk.Frame(parent, bg=self.primary_color, height=100)
         header.pack(fill=tk.X, pady=(0, 0))
         
-        title = tk.Label(header, text="🔢 Bubble Sort Visualizer", 
+        title = tk.Label(header, text="🔢 Sorting Algorithm Visualizer", 
                         font=("Segoe UI", 22, "bold"), bg=self.primary_color, 
                         fg=self.highlight_color)
         title.pack(pady=(15, 5))
         
-        subtitle = tk.Label(header, text="Sort data in descending order with real-time visualization", 
+        subtitle = tk.Label(header, text="Choose an algorithm and sort data in descending order", 
                            font=("Segoe UI", 10), bg=self.primary_color, 
                            fg="#93c5fd")
         subtitle.pack(pady=(0, 15))
@@ -214,6 +310,28 @@ class BubbleSortGUI:
             "highlightthickness": 0,
             "activeforeground": "black"
         }
+        
+        # Algorithm Selector
+        algo_frame = tk.Frame(parent, bg=self.card_bg, relief=tk.FLAT, bd=2)
+        algo_frame.pack(side=tk.LEFT, padx=(0, 15))
+        
+        algo_label = tk.Label(algo_frame, text="📋 Algorithm:", 
+                             font=("Segoe UI", 10, "bold"), bg=self.card_bg, 
+                             fg=self.text_color)
+        algo_label.pack(side=tk.LEFT, padx=(10, 5), pady=10)
+        
+        # Style for combobox
+        style = ttk.Style()
+        style.configure("TCombobox", font=("Segoe UI", 11))
+        
+        self.algo_combo = ttk.Combobox(algo_frame, 
+                                       textvariable=self.selected_algorithm,
+                                       values=["Bubble Sort", "Insertion Sort", "Merge Sort"],
+                                       state="readonly",
+                                       width=15,
+                                       font=("Segoe UI", 11))
+        self.algo_combo.pack(side=tk.LEFT, padx=(0, 10), pady=10)
+        self.algo_combo.current(0)
         
         # Start Button with background container
         start_bg_frame = tk.Frame(parent, bg="#047857", relief=tk.RAISED, bd=2)
@@ -292,7 +410,7 @@ class BubbleSortGUI:
                                      fg=self.accent_color)
         self.footer_status.pack(anchor=tk.W, pady=5)
         
-        info_text = tk.Label(footer, text="Algorithm: Quick Sort (Fast) | Bubble Sort (Comparison) | Order: Descending | Data Source: dataset.txt", 
+        info_text = tk.Label(footer, text="Algorithms: Bubble Sort | Insertion Sort | Merge Sort | Order: Descending | Data Source: dataset.txt", 
                             font=("Segoe UI", 9), bg=self.card_bg, fg="#64748b")
         info_text.pack(anchor=tk.W)
     
@@ -300,9 +418,11 @@ class BubbleSortGUI:
         """Start sorting in a separate thread"""
         self.sort_button.config(state=tk.DISABLED)
         self.clear_button.config(state=tk.DISABLED)
+        self.algo_combo.config(state=tk.DISABLED)
         self.output_text.delete(1.0, tk.END)
         
-        self.status_label.config(text="⏳ Loading data from dataset.txt...", fg="#3b82f6")
+        selected_algo = self.selected_algorithm.get()
+        self.status_label.config(text=f"⏳ Loading data for {selected_algo}...", fg="#3b82f6")
         self.progress.start()
         
         # Run sorting in background thread
@@ -311,10 +431,11 @@ class BubbleSortGUI:
         thread.start()
     
     def perform_sort(self):
-        """Perform the sorting operation with optimized algorithm"""
+        """Perform the sorting operation with the selected algorithm"""
         try:
-            # Load data
-            dataset_file = "dataset.txt"
+            # Load data - use script directory to find dataset.txt
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            dataset_file = os.path.join(script_dir, "dataset.txt")
             data = load_data_from_file(dataset_file)
             
             if data is None:
@@ -323,22 +444,31 @@ class BubbleSortGUI:
                 self.root.after(0, self.reset_ui)
                 return
             
-            # Update status
             count = len(data)
-            self.root.after(0, lambda: self.status_label.config(
-                text=f"🔄 Sorting {count} numbers using Iterative Quick Sort...", fg="#60a5fa"))
+            selected_algo = self.selected_algorithm.get()
             
-            # Perform sorting using optimized iterative quick sort algorithm
-            sorted_data, time_taken = quick_sort_descending(data.copy())
+            # Update status
+            self.root.after(0, lambda: self.status_label.config(
+                text=f"🔄 Running {selected_algo} on {count} numbers...", fg="#60a5fa"))
+            
+            # Perform sorting based on selected algorithm
+            if selected_algo == "Bubble Sort":
+                sorted_data, time_taken = bubble_sort_descending(data.copy())
+            elif selected_algo == "Insertion Sort":
+                sorted_data, time_taken = insertion_sort_descending(data.copy())
+            elif selected_algo == "Merge Sort":
+                sorted_data, time_taken = merge_sort_descending(data.copy())
+            else:
+                sorted_data, time_taken = bubble_sort_descending(data.copy())
             
             # Display results
-            self.root.after(0, lambda: self.display_results(sorted_data, time_taken, count))
+            self.root.after(0, lambda: self.display_results(sorted_data, time_taken, count, selected_algo))
             
         except Exception as e:
             self.root.after(0, lambda: messagebox.showerror("Error", f"An error occurred: {str(e)}"))
             self.root.after(0, self.reset_ui)
     
-    def display_results(self, sorted_data, time_taken, count):
+    def display_results(self, sorted_data, time_taken, count, algorithm):
         """Display sorting results in the GUI with improved formatting"""
         self.output_text.delete(1.0, tk.END)
         
@@ -378,8 +508,19 @@ class BubbleSortGUI:
         
         result_lines.append("╠" + "═" * 103 + "╣")
         
+        # Algorithm Info Section
+        result_lines.append(f"║  ⏱️  ALGORITHM USED: {algorithm:<20}                                                              ║")
+        result_lines.append("║  ─" * 52 + "│")
+        
+        time_ms = time_taken * 1000
+        line = f"║  ✅ {algorithm:<15} : {time_taken:.6f}s ({time_ms:>8.2f}ms)"
+        line = line + " " * (104 - len(line)) + "║"
+        result_lines.append(line)
+        
+        result_lines.append("╠" + "═" * 103 + "╣")
+        
         # Statistics
-        result_lines.append(f"║  Total Numbers: {count:<6d}  |  Time: {time_taken:.4f}s ({time_taken*1000:.2f}ms)  |  Max: {max(sorted_data):<6d}  |  Min: {min(sorted_data):<6d}  ║")
+        result_lines.append(f"║  Total Numbers: {count:<6d}  |  Algorithm: {algorithm}  |  Max: {max(sorted_data):<6d}  |  Min: {min(sorted_data):<6d}  ║")
         
         result_lines.append("╚" + "═" * 103 + "╝")
         
@@ -393,8 +534,8 @@ class BubbleSortGUI:
         self.time_ms_label.config(text=f"{time_taken * 1000:.2f}")
         
         # Update status
-        self.status_label.config(text="✅ Sorting completed successfully!", fg=self.accent_color)
-        self.footer_status.config(text="✓ Sort completed - All data sorted in descending order", 
+        self.status_label.config(text=f"✅ {algorithm} completed successfully!", fg=self.accent_color)
+        self.footer_status.config(text=f"✓ Sort completed using {algorithm} - All data sorted in descending order", 
                                  fg=self.accent_color)
         
         self.progress.stop()
@@ -413,6 +554,8 @@ class BubbleSortGUI:
         """Re-enable buttons after sorting"""
         self.sort_button.config(state=tk.NORMAL)
         self.clear_button.config(state=tk.NORMAL)
+        self.algo_combo.config(state="readonly")
+        self.progress.stop()
         self.progress.stop()
 
 
