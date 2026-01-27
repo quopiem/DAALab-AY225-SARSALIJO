@@ -1,7 +1,8 @@
 import time
 import os
+import random
 import tkinter as tk
-from tkinter import scrolledtext, messagebox, ttk
+from tkinter import scrolledtext, messagebox, ttk, filedialog
 import threading
 
 def bubble_sort_descending(arr):
@@ -175,32 +176,41 @@ def merge_sort_descending(arr):
     return arr, time_taken
 
 
-def load_data_from_file(filename):
+def generate_random_data(size, min_val=1, max_val=100000):
     """
-    Load integers from a file (one per line).
+    Generates a list of random integers.
     
     Args:
-        filename: Path to the file containing integers
+        size: Number of elements to generate
+        min_val: Minimum value
+        max_val: Maximum value
         
     Returns:
-        List of integers
+        List of random integers
     """
-    try:
-        with open(filename, 'r') as f:
-            data = []
-            for line in f:
-                line = line.strip()
-                if line:  # Only add non-empty lines
-                    try:
-                        data.append(int(line))
-                    except ValueError:
-                        # Skip lines that can't be converted to int
-                        pass
-        return data
-    except FileNotFoundError:
-        return None
-    except Exception as e:
-        return None
+    return [random.randint(min_val, max_val) for _ in range(size)]
+
+def verify_sorted(arr, ascending=False):
+    """
+    Verifies if the array is sorted.
+    
+    Args:
+        arr: The list to check
+        ascending: True for ascending order, False for descending
+        
+    Returns:
+        Boolean indicating if sorted correctly
+    """
+    n = len(arr)
+    if ascending:
+        for i in range(n - 1):
+            if arr[i] > arr[i + 1]:
+                return False
+    else:
+        for i in range(n - 1):
+            if arr[i] < arr[i + 1]:
+                return False
+    return True
 
 
 class BubbleSortGUI:
@@ -212,6 +222,8 @@ class BubbleSortGUI:
         
         # Selected sorting algorithm
         self.selected_algorithm = tk.StringVar(value="Bubble Sort")
+        self.loaded_data = None
+        self.loaded_filename = None
         
         # Color Scheme
         self.primary_color = "#1e3a8a"      # Dark Blue
@@ -311,6 +323,22 @@ class BubbleSortGUI:
             "activeforeground": "black"
         }
         
+        # Upload Button
+        upload_frame = tk.Frame(parent, bg=self.card_bg, relief=tk.FLAT, bd=2)
+        upload_frame.pack(side=tk.LEFT, padx=(0, 15))
+        
+        self.upload_button = tk.Button(upload_frame, text="📁 Upload", 
+                                     command=self.load_file,
+                                     bg="#475569", fg="white",
+                                     font=("Segoe UI", 10, "bold"),
+                                     relief=tk.FLAT, padx=10)
+        self.upload_button.pack(side=tk.LEFT, padx=5, pady=5)
+        
+        self.file_label = tk.Label(upload_frame, text="No file selected", 
+                                  font=("Segoe UI", 9), bg=self.card_bg, 
+                                  fg="#94a3b8", width=15)
+        self.file_label.pack(side=tk.LEFT, padx=(0, 5), pady=10)
+        
         # Algorithm Selector
         algo_frame = tk.Frame(parent, bg=self.card_bg, relief=tk.FLAT, bd=2)
         algo_frame.pack(side=tk.LEFT, padx=(0, 15))
@@ -354,6 +382,17 @@ class BubbleSortGUI:
                                      activebackground="#7f1d1d",
                                      **button_style)
         self.clear_button.pack(padx=2, pady=2)
+
+        # Instructions Button with background container
+        help_bg_frame = tk.Frame(parent, bg="#d97706", relief=tk.RAISED, bd=2)
+        help_bg_frame.pack(side=tk.LEFT, padx=(0, 15))
+        
+        self.help_button = tk.Button(help_bg_frame, text="❓ HELP", 
+                                     command=self.show_instructions,
+                                     bg="#d97706", fg="black",
+                                     activebackground="#b45309",
+                                     **button_style)
+        self.help_button.pack(padx=2, pady=2)
     
     def create_stats_frame(self, parent):
         """Create statistics display cards (horizontal layout)"""
@@ -410,10 +449,87 @@ class BubbleSortGUI:
                                      fg=self.accent_color)
         self.footer_status.pack(anchor=tk.W, pady=5)
         
-        info_text = tk.Label(footer, text="Algorithms: Bubble Sort | Insertion Sort | Merge Sort | Order: Descending | Data Source: dataset.txt", 
+        self.source_label = tk.Label(footer, text="Algorithms: Bubble Sort | Insertion Sort | Merge Sort | Order: Descending | Data Source: Random Generation", 
                             font=("Segoe UI", 9), bg=self.card_bg, fg="#64748b")
-        info_text.pack(anchor=tk.W)
+        self.source_label.pack(anchor=tk.W)
     
+    def load_file(self):
+        """Handle file upload"""
+        filename = filedialog.askopenfilename(
+            title="Select Dataset File",
+            filetypes=(("Text Files", "*.txt"), ("All Files", "*.*"))
+        )
+        
+        if filename:
+            try:
+                # Reuse the load_data_from_file function from before if it still exists, 
+                # or parse it here. Since I removed load_data_from_file, I'll implement parsing here.
+                 with open(filename, 'r') as f:
+                    data = []
+                    for line in f:
+                        line = line.strip()
+                        if line:
+                            try:
+                                data.append(int(line))
+                            except ValueError:
+                                pass
+                
+                 if not data:
+                    messagebox.showerror("Error", "No valid integer data found in file.")
+                    return
+
+                 self.loaded_data = data
+                 self.loaded_filename = os.path.basename(filename)
+                 self.file_label.config(text=self.loaded_filename, fg=self.accent_color)
+                 self.source_label.config(text=f"Algorithms: Bubble Sort | Insertion Sort | Merge Sort | Order: Descending | Data Source: File ({self.loaded_filename})")
+                 messagebox.showinfo("Success", f"Loaded {len(data)} numbers from {self.loaded_filename}")
+
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to load file: {str(e)}")
+
+    def show_instructions(self):
+        """Show instructions in a modal window"""
+        io_window = tk.Toplevel(self.root)
+        io_window.title("📘 User Instructions / Guide")
+        io_window.geometry("700x550")
+        io_window.configure(bg=self.bg_color)
+        
+        # Make the window modal
+        io_window.transient(self.root)
+        io_window.grab_set()
+        
+        # Main Frame inside the window
+        main_frame = tk.Frame(io_window, bg=self.bg_color)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        
+        # Title
+        tk.Label(main_frame, text="🚀 How to Use the Benchmarking Tool", 
+                font=("Segoe UI", 18, "bold"), bg=self.bg_color, fg=self.highlight_color).pack(pady=(0, 20), anchor=tk.W)
+        
+        # Steps
+        steps = [
+            ("1. Data Source Selection", "• OPTION A: Click '📁 Upload' to load your own dataset file (text file with numbers).\n• OPTION B: Do nothing, and the system will automatically generate 5,000 random numbers."),
+            ("2. Select Algorithm", "Choose one of the sorting algorithms from the dropdown menu:\n• Bubble Sort (O(n²))\n• Insertion Sort (O(n²))\n• Merge Sort (O(n log n))"),
+            ("3. Run Benchmark", "Click the '▶ START SORTING' button. The system will sort the data in DESCENDING order."),
+            ("4. Analyze Results", "Review the sorted output, execution time (seconds/ms), and verification status (✅ PASSED)."),
+            ("5. Compare", "Try running different algorithms on the same dataset/size to see the performance difference!")
+        ]
+        
+        for title, desc in steps:
+            step_frame = tk.Frame(main_frame, bg=self.card_bg, pady=10, padx=15)
+            step_frame.pack(fill=tk.X, pady=5)
+            
+            tk.Label(step_frame, text=title, font=("Segoe UI", 12, "bold"), 
+                    bg=self.card_bg, fg=self.secondary_color).pack(anchor=tk.W)
+            
+            tk.Label(step_frame, text=desc, font=("Segoe UI", 10), 
+                    bg=self.card_bg, fg=self.text_color, justify=tk.LEFT).pack(anchor=tk.W, pady=(5, 0))
+        
+        # Close Button
+        tk.Button(main_frame, text="Got it!", command=io_window.destroy,
+                 bg=self.accent_color, fg="black", font=("Segoe UI", 10, "bold"),
+                 relief=tk.FLAT, padx=20, pady=5).pack(pady=20)
+
     def start_sort(self):
         """Start sorting in a separate thread"""
         self.sort_button.config(state=tk.DISABLED)
@@ -433,16 +549,13 @@ class BubbleSortGUI:
     def perform_sort(self):
         """Perform the sorting operation with the selected algorithm"""
         try:
-            # Load data - use script directory to find dataset.txt
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            dataset_file = os.path.join(script_dir, "dataset.txt")
-            data = load_data_from_file(dataset_file)
-            
-            if data is None:
-                self.root.after(0, lambda: messagebox.showerror("Error", 
-                                f"Could not load {dataset_file}"))
-                self.root.after(0, self.reset_ui)
-                return
+            # Determine data source
+            if self.loaded_data:
+                data = self.loaded_data.copy()
+            else:
+                # Generate random data with default size since input was removed
+                size = 5000  # Default size
+                data = generate_random_data(size)
             
             count = len(data)
             selected_algo = self.selected_algorithm.get()
@@ -461,14 +574,17 @@ class BubbleSortGUI:
             else:
                 sorted_data, time_taken = bubble_sort_descending(data.copy())
             
+            # Verify sorted
+            is_valid = verify_sorted(sorted_data, ascending=False)
+            
             # Display results
-            self.root.after(0, lambda: self.display_results(sorted_data, time_taken, count, selected_algo))
+            self.root.after(0, lambda: self.display_results(sorted_data, time_taken, count, selected_algo, is_valid))
             
         except Exception as e:
             self.root.after(0, lambda: messagebox.showerror("Error", f"An error occurred: {str(e)}"))
             self.root.after(0, self.reset_ui)
     
-    def display_results(self, sorted_data, time_taken, count, algorithm):
+    def display_results(self, sorted_data, time_taken, count, algorithm, is_valid):
         """Display sorting results in the GUI with improved formatting"""
         self.output_text.delete(1.0, tk.END)
         
@@ -508,6 +624,11 @@ class BubbleSortGUI:
         
         result_lines.append("╠" + "═" * 103 + "╣")
         
+        # Verification
+        status_icon = "✅" if is_valid else "❌"
+        valid_text = "PASSED" if is_valid else "FAILED"
+        result_lines.append(f"║  {status_icon}  VERIFICATION: {valid_text:<10}                                                                 ║")
+        
         # Algorithm Info Section
         result_lines.append(f"║  ⏱️  ALGORITHM USED: {algorithm:<20}                                                              ║")
         result_lines.append("║  ─" * 52 + "│")
@@ -535,7 +656,7 @@ class BubbleSortGUI:
         
         # Update status
         self.status_label.config(text=f"✅ {algorithm} completed successfully!", fg=self.accent_color)
-        self.footer_status.config(text=f"✓ Sort completed using {algorithm} - All data sorted in descending order", 
+        self.footer_status.config(text=f"✓ Sort completed using {algorithm} - all data sorted in descending order", 
                                  fg=self.accent_color)
         
         self.progress.stop()
@@ -549,6 +670,12 @@ class BubbleSortGUI:
         self.time_ms_label.config(text="0.00")
         self.status_label.config(text="Ready to sort", fg=self.accent_color)
         self.footer_status.config(text="✓ Ready to sort", fg=self.accent_color)
+        
+        # Clear loaded file
+        self.loaded_data = None
+        self.loaded_filename = None
+        self.file_label.config(text="No file selected", fg="#94a3b8")
+        self.source_label.config(text="Algorithms: Bubble Sort | Insertion Sort | Merge Sort | Order: Descending | Data Source: Random Generation")
     
     def reset_ui(self):
         """Re-enable buttons after sorting"""
