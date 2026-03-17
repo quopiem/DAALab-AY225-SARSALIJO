@@ -86,22 +86,22 @@ NODE_POSITIONS = {
     'SILANG':   (0.75, 0.88),
 }
 
-# ── Color Palette (Modern Google Maps) ──
-BG_MAIN        = '#F8F9FA'          # Lightest gray background
-BG_HEADER      = '#FFFFFF'          # White header
-BG_CARD        = '#FFFFFF'          # White cards
-FG_PRIMARY     = '#202124'          # Dark gray text
-FG_SECONDARY   = '#5F6368'          # Medium gray text
-ACCENT_PRIMARY = '#1A73E8'          # Google Blue
-ACCENT_HOVER   = '#174EA6'          # Darker Blue
-BTN_RESET_BG   = '#F1F3F4'
-BTN_RESET_HOV  = '#E8EAED'
-EDGE_COLOR     = '#BDC1C6'          # Soft gray edges
-EDGE_TEXT      = '#3C4043'
-NODE_FILL      = '#FFFFFF'
-NODE_OUTLINE   = '#5F6368'
-HL_EDGE        = '#4285F4'          # Blue highlight
-HL_NODE        = '#4285F4'
+# ── Color Palette (Futuristic HUD) ──
+BG_MAIN        = '#050A14'          # Deep Space Black
+BG_HEADER      = '#0F1724'          # Dark Blue-Grey
+BG_CARD        = '#0F1724'          # Dark Card
+FG_PRIMARY     = '#00F0FF'          # Neon Cyan
+FG_SECONDARY   = '#8DA9C4'          # Muted Cool Grey
+ACCENT_PRIMARY = '#00F0FF'          # Neon Cyan
+ACCENT_HOVER   = '#FF0055'          # Neon Pink
+BTN_RESET_BG   = '#1B2735'
+BTN_RESET_HOV  = '#263445'
+EDGE_COLOR     = '#1B2735'          # Faint structure lines
+EDGE_TEXT      = '#8DA9C4'
+NODE_FILL      = '#050A14'
+NODE_OUTLINE   = '#00F0FF'
+HL_EDGE        = '#FF0055'          # Neon Pink
+HL_NODE        = '#FF0055'
 
 CANVAS_W       = 1000
 CANVAS_H       = 700
@@ -115,12 +115,16 @@ def draw_map(canvas, graph, nodes, highlight_path=None, active_metric='distance'
     if W < 100: W = CANVAS_W
     if H < 100: H = CANVAS_H
 
-    # Background pattern (subtle grid)
+    # Background pattern (Digital Grid)
     canvas.create_rectangle(0, 0, W, H, fill=BG_MAIN, outline='')
+    
+    # Grid lines
     for i in range(0, W, 40):
-        canvas.create_line(i, 0, i, H, fill='#E8EAED', width=1)
+        color = '#102A43' if i % 120 != 0 else '#243B53'
+        canvas.create_line(i, 0, i, H, fill=color, width=1)
     for i in range(0, H, 40):
-        canvas.create_line(0, i, W, i, fill='#E8EAED', width=1)
+        color = '#102A43' if i % 120 != 0 else '#243B53'
+        canvas.create_line(0, i, W, i, fill=color, width=1)
 
     def pos(name):
         px, py = NODE_POSITIONS.get(name, (0.5, 0.5))
@@ -145,12 +149,14 @@ def draw_map(canvas, graph, nodes, highlight_path=None, active_metric='distance'
             x2, y2 = pos(nb)
             is_hl  = key in hl_edges
             
+            # Base Line
             color = HL_EDGE if is_hl else EDGE_COLOR
-            width = 5 if is_hl else 3
+            width = 4 if is_hl else 2
             
-            # Shadow for highlighted path
+            # Glow effect for highlighted path
             if is_hl:
-                canvas.create_line(x1, y1+2, x2, y2+2, fill='#D2E3FC', width=8, capstyle=tk.ROUND, smooth=True)
+                canvas.create_line(x1, y1, x2, y2, fill=HL_EDGE, width=10, capstyle=tk.ROUND, stipple='gray50') # Fake glow
+                canvas.create_line(x1, y1, x2, y2, fill=HL_EDGE, width=6, capstyle=tk.ROUND)
 
             canvas.create_line(x1, y1, x2, y2, fill=color, width=width, capstyle=tk.ROUND, smooth=True)
 
@@ -172,37 +178,41 @@ def draw_map(canvas, graph, nodes, highlight_path=None, active_metric='distance'
             elif active_metric == 'time': suffix = 'min'
             else: suffix = 'L'
             
-            # Label badge
+            # Label badge (Hexagon or Box style)
             is_hl = key in hl_edges
-            bg = '#E8F0FE' if is_hl else '#FFFFFF'
-            fg = '#1967D2' if is_hl else '#5F6368'
+            bg = '#102A43' if is_hl else '#0F1724'
+            fg = HL_EDGE if is_hl else EDGE_TEXT
+            outline = HL_EDGE if is_hl else '#1B2735'
             
-            canvas.create_oval(mx-15, my-10, mx+15, my+10, fill=bg, outline=EDGE_COLOR, width=1)
-            canvas.create_text(mx, my, text=f"{val_str}{suffix}", fill=fg, font=('Roboto', 8, 'bold'))
+            # Draw a tech-style label box
+            canvas.create_rectangle(mx-18, my-10, mx+18, my+10, fill=bg, outline=outline, width=1)
+            canvas.create_text(mx, my, text=f"{val_str}{suffix}", fill=fg, font=('Consolas', 8))
 
     # Pass 3: Draw Nodes
     for name in nodes:
         x, y = pos(name)
         is_hl = highlight_path and name in highlight_path
         
-        # Shadow
-        canvas.create_oval(x-RADIUS, y-RADIUS+2, x+RADIUS, y+RADIUS+2, fill='#DADCE0', outline='')
+        # Outer Ring
+        ring_col = HL_NODE if is_hl else NODE_OUTLINE
+        canvas.create_oval(x-RADIUS*1.2, y-RADIUS*1.2, x+RADIUS*1.2, y+RADIUS*1.2, outline=ring_col, width=1)
         
-        # Main Circle
-        fill = HL_NODE if is_hl else NODE_FILL
-        outline = '#FFFFFF' if is_hl else NODE_OUTLINE
+        # Inner Circle
+        fill = BG_MAIN
+        outline = HL_NODE if is_hl else NODE_OUTLINE
         
-        # If highlighted, show a larger pin-like circle
-        r = RADIUS + 2 if is_hl else RADIUS
+        id = canvas.create_oval(x-RADIUS, y-RADIUS, x+RADIUS, y+RADIUS, fill=fill, outline=outline, width=2, tags=f"node_{name}")
         
-        id = canvas.create_oval(x-r, y-r, x+r, y+r, fill=fill, outline=outline, width=2, tags=f"node_{name}")
-        
+        # Inner Dot
+        dot_col = HL_NODE if is_hl else NODE_OUTLINE
+        canvas.create_oval(x-4, y-4, x+4, y+4, fill=dot_col, outline='')
+
         # Label inside
-        text_col = '#FFFFFF' if is_hl else FG_PRIMARY
-        canvas.create_text(x, y, text=name[:3], fill=text_col, font=('Roboto', 9, 'bold'), tags=f"node_text_{name}")
+        text_col = '#FFFFFF'
+        # canvas.create_text(x, y, text=name[:3], fill=text_col, font=('Roboto', 9, 'bold'), tags=f"node_text_{name}")
         
-        # Name Label below
-        canvas.create_text(x, y+r+10, text=name, fill=FG_PRIMARY, font=('Roboto', 10, 'bold'), anchor='n')
+        # Name Label below (Neon text)
+        canvas.create_text(x, y+RADIUS+12, text=name, fill=FG_PRIMARY, font=('Consolas', 10, 'bold'), anchor='n')
 
 
 # ─────────────────────────────────────────
@@ -214,57 +224,84 @@ class AppUI:
         self.root = root
         self.graph = graph
         self.nodes = nodes
-        
+        self.current_path = None  # To persist path on resize
+        self._anim_job = None     # For animation cancellation
+
         # Fonts
-        self.font_header = ('Product Sans', 14, 'bold')
-        self.font_reg = ('Roboto', 10)
-        self.font_bold = ('Roboto', 10, 'bold')
+        self.font_header = ('Consolas', 14, 'bold')
+        self.font_reg = ('Consolas', 10)
+        self.font_bold = ('Consolas', 10, 'bold')
         
+        # Configure Dark Theme for TTK Widgets
+        style = ttk.Style()
+        style.theme_use('clam')
+        
+        # Combobox
+        style.configure('TCombobox', 
+                        fieldbackground=BG_MAIN, 
+                        background=BG_HEADER, 
+                        foreground=FG_PRIMARY,
+                        arrowcolor=FG_PRIMARY,
+                        borderwidth=0)
+        style.map('TCombobox', fieldbackground=[('readonly', BG_MAIN)], selectbackground=[('readonly', BG_MAIN)], selectforeground=[('readonly', FG_PRIMARY)])
+
+        # Treeview
+        style.configure("Treeview", 
+                        background=BG_MAIN, 
+                        foreground=FG_SECONDARY, 
+                        fieldbackground=BG_MAIN, 
+                        borderwidth=0,
+                        rowheight=25)
+        style.configure("Treeview.Heading", 
+                        background=BG_HEADER, 
+                        foreground=FG_PRIMARY, 
+                        borderwidth=0,
+                        font=('Consolas', 9, 'bold'))
+        style.map("Treeview", background=[('selected', '#102A43')], foreground=[('selected', FG_PRIMARY)])
+
         self.setup_ui()
 
     def setup_ui(self):
+        self.root.configure(bg=BG_MAIN) # Root Background
+
         # ── TOP BAR (Floating Header Style) ──
         self.header = tk.Frame(self.root, bg=BG_HEADER, pady=10, padx=20)
         self.header.pack(side='top', fill='x')
         
-        # Add bottom border to header
-        tk.Frame(self.root, bg='#DADCE0', height=1).pack(side='top', fill='x')
+        # Add bottom border to header (Neon Line)
+        tk.Frame(self.root, bg=FG_PRIMARY, height=2).pack(side='top', fill='x')
 
         # 1. Title Section
         title_frm = tk.Frame(self.header, bg=BG_HEADER)
         title_frm.pack(side='left', padx=(0, 30))
-        tk.Label(title_frm, text="Maps Optimizer", bg=BG_HEADER, fg=FG_PRIMARY, font=('Product Sans', 16, 'bold')).pack(anchor='w')
-        tk.Label(title_frm, text="Cavite Chapter", bg=BG_HEADER, fg=FG_SECONDARY, font=('Roboto', 9)).pack(anchor='w')
+        tk.Label(title_frm, text="MAPS__OPTIMIZER_V2.0", bg=BG_HEADER, fg=FG_PRIMARY, font=('Consolas', 16, 'bold')).pack(anchor='w')
+        tk.Label(title_frm, text="CAVITE_SECTOR", bg=BG_HEADER, fg=FG_SECONDARY, font=('Consolas', 9)).pack(anchor='w')
 
         # 2. Metrics Section (Right aligned) - PACKED FIRST to ensure visibility
         metrics_frm = tk.Frame(self.header, bg=BG_HEADER)
         metrics_frm.pack(side='right', padx=10)
         
         # Reset Button (Far Right)
-        tk.Button(self.header, text="↺ Reset", command=self.reset, 
-                  bg=BTN_RESET_BG, fg=FG_PRIMARY, relief='flat', padx=15, pady=5, 
-                  font=self.font_bold).pack(side='right', padx=10)
+        tk.Button(self.header, text="[ REBOOT SYSTEM ]", command=self.reset, 
+                  bg=BTN_RESET_BG, fg=FG_PRIMARY, activebackground=BTN_RESET_HOV, activeforeground=FG_PRIMARY,
+                  relief='flat', padx=15, pady=5, 
+                  font=self.font_bold, borderwidth=0).pack(side='right', padx=10)
 
         self.lbl_dist = self.create_metric(metrics_frm, "DISTANCE", "0 km")
         self.lbl_dist.pack(side='left', padx=10)
         
-        self.lbl_time = self.create_metric(metrics_frm, "TIME", "0 min")
+        self.lbl_time = self.create_metric(metrics_frm, "ETA", "0 min")
         self.lbl_time.pack(side='left', padx=10)
         
-        self.lbl_fuel = self.create_metric(metrics_frm, "FUEL", "0 L")
+        self.lbl_fuel = self.create_metric(metrics_frm, "FUEL_REQ", "0 L")
         self.lbl_fuel.pack(side='left', padx=10)
 
         # 3. Controls Section (Grid Layout in Center) - PACKED LAST to fill remaining space
         ctrl_frm = tk.Frame(self.header, bg=BG_HEADER)
         ctrl_frm.pack(side='left', fill='both', expand=True)
         
-        # Styling for Combobox
-        style = ttk.Style()
-        style.theme_use('clam')
-        style.configure('TCombobox', fieldbackground='#F1F3F4', background='white', borderwidth=0)
-        
         # Origin
-        tk.Label(ctrl_frm, text="Origin", bg=BG_HEADER, fg=FG_SECONDARY, font=('Roboto', 8)).grid(row=0, column=0, sticky='w', padx=5)
+        tk.Label(ctrl_frm, text="INIT_NODE", bg=BG_HEADER, fg=FG_SECONDARY, font=('Consolas', 8)).grid(row=0, column=0, sticky='w', padx=5)
         self.frm_var = tk.StringVar()
         cb_origin = ttk.Combobox(ctrl_frm, textvariable=self.frm_var, values=self.nodes, state='readonly', width=15)
         cb_origin.set("- Select -")
@@ -272,10 +309,10 @@ class AppUI:
         cb_origin.bind("<<ComboboxSelected>>", lambda e: self.on_change())
 
         # Arrow Icon
-        tk.Label(ctrl_frm, text="➔", bg=BG_HEADER, fg='#BDC1C6').grid(row=1, column=1, padx=5)
+        tk.Label(ctrl_frm, text=" >> ", bg=BG_HEADER, fg=FG_PRIMARY).grid(row=1, column=1, padx=5)
 
         # Destination
-        tk.Label(ctrl_frm, text="Destination", bg=BG_HEADER, fg=FG_SECONDARY, font=('Roboto', 8)).grid(row=0, column=2, sticky='w', padx=5)
+        tk.Label(ctrl_frm, text="TARGET_NODE", bg=BG_HEADER, fg=FG_SECONDARY, font=('Consolas', 8)).grid(row=0, column=2, sticky='w', padx=5)
         self.to_var = tk.StringVar()
         cb_dest = ttk.Combobox(ctrl_frm, textvariable=self.to_var, values=self.nodes, state='readonly', width=15)
         cb_dest.set("- Select -")
@@ -289,22 +326,55 @@ class AppUI:
         radio_frm = tk.Frame(ctrl_frm, bg=BG_HEADER)
         radio_frm.grid(row=1, column=4, padx=10)
         
-        modes = [("📏 Distance", "distance"), ("⏱ Time", "time"), ("⛽ Fuel", "fuel")]
+        modes = [("DIST", "distance"), ("N-TIME", "time"), ("FUEL", "fuel")]
         for text, val in modes:
             tk.Radiobutton(radio_frm, text=text, variable=self.opt_var, value=val,
-                           bg=BG_HEADER, fg=FG_PRIMARY, activebackground=BG_HEADER,
+                           bg=BG_HEADER, fg=FG_SECONDARY, activebackground=BG_HEADER, activeforeground=FG_PRIMARY,
                            selectcolor=BG_HEADER, indicatoron=0,
                            bd=0, padx=10, pady=5, command=self.on_change).pack(side='left', padx=2)
 
-        # ── CANVAS ──
-        self.canvas = tk.Canvas(self.root, bg=BG_MAIN, highlightthickness=0)
-        self.canvas.pack(fill='both', expand=True)
-        self.canvas.bind('<Configure>', lambda e: draw_map(self.canvas, self.graph, self.nodes, active_metric=self.opt_var.get()))
-        
+        # ── MAIN CONTENT AREA ──
         # Path Bar at Bottom
-        self.path_bar = tk.Label(self.root, text="Ready to route...", bg=BG_MAIN, fg=FG_SECONDARY, font=('Roboto', 11, 'italic'), pady=10)
+        self.path_bar = tk.Label(self.root, text="> AWAITING INPUT COMPLIANCE...", bg=BG_MAIN, fg=FG_SECONDARY, font=('Consolas', 11), pady=10, anchor='w', padx=20)
         self.path_bar.pack(side='bottom', fill='x')
 
+        # Container for Canvas + Details
+        content_frm = tk.Frame(self.root, bg=BG_MAIN)
+        content_frm.pack(fill='both', expand=True)
+
+        # Right Panel: Route Metrics Data
+        self.details_panel = tk.Frame(content_frm, bg=BG_CARD, width=300)
+        self.details_panel.pack(side='right', fill='y', padx=(1, 0)) # 1px left margin
+        self.details_panel.pack_propagate(False)
+        
+        # Border for panel
+        tk.Frame(self.details_panel, bg=FG_PRIMARY, width=1).pack(side='left', fill='y')
+
+        tk.Label(self.details_panel, text="SEGMENT_DATA", bg=BG_CARD, fg=FG_PRIMARY, font=('Consolas', 11, 'bold')).pack(pady=(15, 10), padx=15, anchor='w')
+
+        # Treeview for Data
+        cols = ('to', 'dist', 'time', 'fuel')
+        self.tree = ttk.Treeview(self.details_panel, columns=cols, show='headings', selectmode='browse')
+        
+        self.tree.heading('to', text='STEP')
+        self.tree.heading('dist', text='KM')
+        self.tree.heading('time', text='MIN')
+        self.tree.heading('fuel', text='L')
+        
+        self.tree.column('to', width=80, anchor='w')
+        self.tree.column('dist', width=50, anchor='center')
+        self.tree.column('time', width=50, anchor='center')
+        self.tree.column('fuel', width=45, anchor='center')
+        
+        self.tree.pack(fill='both', expand=True, padx=10, pady=(0, 10))
+
+        # ── CANVAS ──
+        self.canvas = tk.Canvas(content_frm, bg=BG_MAIN, highlightthickness=0)
+        self.canvas.pack(side='left', fill='both', expand=True)
+        self.canvas.bind('<Configure>', lambda e: draw_map(self.canvas, self.graph, self.nodes, 
+                                                           highlight_path=self.current_path, 
+                                                           active_metric=self.opt_var.get()))
+        
         # Bind clicks
         self.canvas.bind('<Button-1>', self.on_canvas_click)
 
@@ -348,7 +418,50 @@ class AppUI:
             
             self.on_change()
 
+    def update_details(self, path):
+        # Clear existing
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+            
+        if not path or len(path) < 2:
+            return
+
+        # Add Start
+        self.tree.insert('', 'end', values=(f"Start: {path[0]}", "-", "-", "-"))
+
+        for i in range(len(path) - 1):
+            u, v = path[i], path[i+1]
+            
+            # Find edge attrs
+            attrs = None
+            for (neighbor, edge_attrs) in self.graph.get(u, []):
+                if neighbor == v:
+                    attrs = edge_attrs
+                    break
+            
+            if attrs:
+                d = attrs['distance']
+                t = attrs['time']
+                f = attrs['fuel']
+                
+                self.tree.insert('', 'end', values=(
+                    f"→ {v}",
+                    f"{d:.1f}",
+                    f"{t:.0f}",
+                    f"{f:.1f}"
+                ))
+
     def reset(self):
+        if self._anim_job:
+            self.root.after_cancel(self._anim_job)
+            self._anim_job = None
+
+        self.current_path = None
+        
+        # Clear Treeview
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+
         self.frm_var.set("- Select -")
         self.to_var.set("- Select -")
         self.lbl_dist.config(text="0 km")
@@ -362,6 +475,13 @@ class AppUI:
         end = self.to_var.get()
         metric = self.opt_var.get()
         
+        # Stop existing animation
+        if self._anim_job:
+            self.root.after_cancel(self._anim_job)
+            self._anim_job = None
+        
+        self.current_path = None
+
         if start not in self.nodes or end not in self.nodes or start == end:
             draw_map(self.canvas, self.graph, self.nodes, active_metric=metric)
             if start == end and start != "- Select -":
@@ -370,15 +490,82 @@ class AppUI:
 
         cost, path, totals = dijkstra(self.graph, start, end, metric)
         if not path:
+            draw_map(self.canvas, self.graph, self.nodes, active_metric=metric)
             self.path_bar.config(text="No path found.", fg='#D93025')
             return
 
-        draw_map(self.canvas, self.graph, self.nodes, highlight_path=path, active_metric=metric)
+        # Start Animation
+        self.current_path = path
+        self.update_details(path)
+
         self.lbl_dist.config(text=f"{totals['distance']:.1f} km")
         self.lbl_time.config(text=f"{totals['time']:.0f} min")
         self.lbl_fuel.config(text=f"{totals['fuel']:.1f} L")
-        
         self.path_bar.config(text=" ➝ ".join(path), fg=FG_PRIMARY)
+
+        self.animate_path(path, metric)
+
+    def animate_path(self, path, metric):
+        # 1. Draw base without highlight
+        draw_map(self.canvas, self.graph, self.nodes, highlight_path=None, active_metric=metric)
+        
+        self._anim_path = path
+        self._anim_metric = metric
+        self._anim_idx = 0
+        self._anim_t = 0
+        self._anim_steps = 15  # Speed of animation
+
+        # Get initial position
+        u = path[0]
+        w = self.canvas.winfo_width()
+        h = self.canvas.winfo_height()
+        px, py = NODE_POSITIONS.get(u, (0.5, 0.5))
+        sx, sy = int(px * w), int(py * h)
+
+        # Draw vehicle (Glowing Drone)
+        self._vehicle_id = self.canvas.create_oval(sx-6, sy-6, sx+6, sy+6, fill='#FFFFFF', outline=HL_NODE, width=2)
+        
+        self.step_animation()
+
+    def step_animation(self):
+        if self._anim_idx >= len(self._anim_path) - 1:
+            # Animation Done -> Draw final static map with full highlight
+            self.canvas.delete(self._vehicle_id)
+            draw_map(self.canvas, self.graph, self.nodes, highlight_path=self._anim_path, active_metric=self._anim_metric)
+            self._anim_job = None
+            return
+
+        u = self._anim_path[self._anim_idx]
+        v = self._anim_path[self._anim_idx + 1]
+        
+        w = self.canvas.winfo_width()
+        h = self.canvas.winfo_height()
+        
+        px1, py1 = NODE_POSITIONS.get(u, (0.5, 0.5))
+        px2, py2 = NODE_POSITIONS.get(v, (0.5, 0.5))
+        
+        x1, y1 = int(px1 * w), int(py1 * h)
+        x2, y2 = int(px2 * w), int(py2 * h)
+        
+        # Interpolate
+        self._anim_t += 1
+        fraction = self._anim_t / self._anim_steps
+        
+        cx = x1 + (x2 - x1) * fraction
+        cy = y1 + (y2 - y1) * fraction
+        
+        # Move vehicle
+        self.canvas.coords(self._vehicle_id, cx-6, cy-6, cx+6, cy+6)
+        
+        # Draw trail (Neon)
+        self.canvas.create_line(x1, y1, cx, cy, fill=HL_EDGE, width=4, capstyle=tk.ROUND, tag='anim_trail')
+        self.canvas.create_line(x1, y1, cx, cy, fill='#4285F4', width=5, capstyle=tk.ROUND, tag='anim_trail')
+        
+        if self._anim_t >= self._anim_steps:
+            self._anim_t = 0
+            self._anim_idx += 1
+            
+        self._anim_job = self.root.after(20, self.step_animation)
 
 
 def build_gui(graph, nodes):
