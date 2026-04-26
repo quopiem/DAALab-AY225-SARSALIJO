@@ -154,8 +154,45 @@
         }
 
         function renderSummaryCards(data) {
-            // Student 2 should implement this
-            console.log('renderSummaryCards called with', data.length, 'rows');
+            const container = document.getElementById('summaryCards');
+            container.innerHTML = '';
+
+            if (!data || data.length === 0) {
+                return;
+            }
+
+            // Calculate statistics
+            const gdpValues = data.map(d => parseFloat(String(d.GDP || 0).replace(/[^0-9.-]/g, ''))).filter(v => !isNaN(v));
+            const avgGDP = gdpValues.length > 0 ? (gdpValues.reduce((a, b) => a + b, 0) / gdpValues.length).toFixed(0) : 0;
+            
+            const highestGDPCountry = data.reduce((max, curr) => {
+                const currGDP = parseFloat(String(curr.GDP || 0).replace(/[^0-9.-]/g, ''));
+                const maxGDP = parseFloat(String(max.GDP || 0).replace(/[^0-9.-]/g, ''));
+                return currGDP > maxGDP ? curr : max;
+            });
+
+            const totalCountries = data.length;
+
+            const topRankedCountry = data.reduce((best, curr) => {
+                const currRank = parseInt(curr.Rank || 999);
+                const bestRank = parseInt(best.Rank || 999);
+                return currRank < bestRank ? curr : best;
+            });
+
+            // Create summary cards
+            const cards = [
+                { title: 'Avg GDP', value: `$${parseInt(avgGDP).toLocaleString()}` },
+                { title: 'Highest GDP', value: highestGDPCountry.CountryName },
+                { title: 'Total Countries', value: totalCountries },
+                { title: 'Top Ranked', value: topRankedCountry.CountryName }
+            ];
+
+            cards.forEach(card => {
+                const div = document.createElement('div');
+                div.className = 'card';
+                div.innerHTML = `<div style="font-size: 12px; color: #666;">${card.title}</div><div style="font-size: 16px; font-weight: bold; margin-top: 4px;">${card.value}</div>`;
+                container.appendChild(div);
+            });
         }
 
         function onDataReady() {
