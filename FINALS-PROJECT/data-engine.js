@@ -132,7 +132,7 @@ function renderSummaryCards(data) {
 
     [
         { label: 'Countries Ranked',  value: countries.length },
-        { label: 'World GDP (2017)',   value: '$' + Math.round(worldGDP / 1000).toLocaleString() + ' B' },
+        { label: 'World GDP (2017)',   value: '$' + Math.round(worldGDP / 1000).toLocaleString() + ' M' },
         { label: 'Largest Economy',    value: topEcon   ? getCountryName(topEcon)   : 'N/A' },
         { label: '#1 Ranked',          value: topRanked ? getCountryName(topRanked) : 'N/A' },
         { label: 'Mean GDP',           value: '$' + Math.round(avgGDP).toLocaleString() + ' M' },
