@@ -242,6 +242,99 @@
         // Load dataset on page load
         window.addEventListener('load', fetchKaggleDataset);
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+      // Cleanup script
+        <script>
+    function isValidRow(row) {
+        const name = String(row.CountryName || row.name || '').trim();
+        const gdp = parseFloat(String(row.GDP ?? row.score ?? '').replace(/[^0-9.-]/g, ''));
+        const rank = parseInt(String(row.Rank ?? '').replace(/[^0-9.-]/g, ''), 10);
+
+        return name !== '' && Number.isFinite(gdp) && !Number.isNaN(rank);
+    }
+
+    function cleanData(data) {
+        return data.filter(isValidRow);
+    }
+
+    function onDataReady() {
+        const cleaned = cleanData(window.DS);
+
+        // Use cleaned data only for charts and analysis
+        initCharts(cleaned);
+        renderAnalysis(cleaned);
+        renderInsights(cleaned);
+    }
+
+    function initCharts(data) {
+        drawBarChart('barChart', data);
+        drawScatterPlot('scatterPlot', data);
+        drawDoughnut('doughnutChart', data);
+    }
+    </script>
+    // category splitting
+    <script>
+const INCOME_GROUPS = {
+    WLD: 'World',
+    HIC: 'High income',
+    UMC: 'Upper middle income',
+    LMC: 'Lower middle income',
+    LIC: 'Low income'
+};
+
+const REGIONS = {
+    EAS: 'East Asia & Pacific',
+    ECS: 'Europe & Central Asia',
+    LCN: 'Latin America & Caribbean',
+    MEA: 'Middle East & North Africa',
+    NAC: 'North America',
+    SAS: 'South Asia',
+    SSF: 'Sub-Saharan Africa'
+};
+
+const SPECIAL_TERRITORIES = {
+    HKG: 'Hong Kong SAR, China',
+    MAC: 'Macao SAR, China',
+    PRI: 'Puerto Rico',
+    GUM: 'Guam',
+    IMN: 'Isle of Man'
+};
+
+function getCode(row) {
+    return String(row.Code || row.code || row.countryCode || row.CountryCode || '').trim().toUpperCase();
+}
+
+function getCategory(row) {
+    const code = getCode(row);
+
+    if (INCOME_GROUPS[code]) return { type: 'income', label: INCOME_GROUPS[code] };
+    if (REGIONS[code]) return { type: 'region', label: REGIONS[code] };
+    if (SPECIAL_TERRITORIES[code]) return { type: 'special', label: SPECIAL_TERRITORIES[code] };
+
+    return { type: 'country', label: String(row.CountryName || row.name || '').trim() };
+}
+
+function splitByCategory(data) {
+    const grouped = {
+        income: {},
+        region: {},
+        special: {},
+        country: {}
+    };
+
+    data.forEach(row => {
+        const gdp = parseFloat(String(row.GDP ?? row.score ?? '').replace(/[^0-9.-]/g, ''));
+        if (!Number.isFinite(gdp)) return;
+
+        const cat = getCategory(row);
+        if (!grouped[cat.type][cat.label]) {
+            grouped[cat.type][cat.label] = [];
+        }
+        grouped[cat.type][cat.label].push(row);
+    });
+
+    return grouped;
+}
+</script>
+
 </body>
 </html>
