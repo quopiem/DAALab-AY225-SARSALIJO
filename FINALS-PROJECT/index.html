@@ -4,34 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Data Analysis Dashboard</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 5px; padding: 0; }
-        .container { max-width: 100%; margin: 0; }
-        #summaryCards { display: flex; gap: 5px; margin-bottom: 5px; }
-        .card { padding: 5px; border: 1px solid #ccc; border-radius: 3px; }
-        table { border-collapse: collapse; margin-top: 5px; }
-        th { background-color: #f0f0f0; font-weight: bold; padding: 3px 8px; text-align: left; border-bottom: 2px solid #999; font-size: 13px; }
-        td { padding: 2px 8px; text-align: left; border-bottom: 1px solid #ddd; font-size: 13px; }
-        td.num { text-align: right; font-family: monospace; padding: 2px 4px; width: auto; }
-        h1 { margin: 0; padding: 0; font-size: 18px; }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
         <h1>Data Analysis Dashboard</h1>
         
         <div id="summaryCards"></div>
-        <div style="margin: 5px 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-            <input type="text" id="filterInput" placeholder="Filter by name..." style="padding: 4px 6px; width: 200px; font-size: 13px;">
-            <select id="sortSelect" style="padding: 4px 6px; font-size: 13px;">
+        <div class="filter-sort-section">
+            <input type="text" id="filterInput" placeholder="Filter by name...">
+            <select id="sortSelect">
                 <option value="none">No Sort</option>
                 <option value="nameAsc">Name (A-Z)</option>
                 <option value="gdpDesc">GDP (High to Low)</option>
             </select>
-            <button onclick="applyFilterSort()" style="padding: 4px 10px; cursor: pointer; font-size: 13px;">Filter & Sort</button>
-            <button onclick="resetTable()" style="padding: 4px 10px; cursor: pointer; font-size: 13px;">Reset</button>
+            <button onclick="applyFilterSort()">Filter & Sort</button>
+            <button onclick="resetTable()">Reset</button>
         </div>
-        <div id="rowCount" style="margin: 2px 0; padding: 0; font-size: 13px;">Rows: 0</div>
+        <div id="rowCount">Rows: 0</div>
         
         <table id="dataTable">
             <thead>
@@ -190,7 +180,7 @@
             cards.forEach(card => {
                 const div = document.createElement('div');
                 div.className = 'card';
-                div.innerHTML = `<div style="font-size: 12px; color: #666;">${card.title}</div><div style="font-size: 16px; font-weight: bold; margin-top: 4px;">${card.value}</div>`;
+                div.innerHTML = `<div class="card-label">${card.title}</div><div class="card-value">${card.value}</div>`;
                 container.appendChild(div);
             });
         }
