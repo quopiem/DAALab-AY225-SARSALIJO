@@ -3,797 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Data Analysis Dashboard</title>
+    <title>World GDP Ranking 2017</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Data Analysis Dashboard</h1>
-        
-        <div id="summaryCards"></div>
+<div class="container">
+
+    <!-- Header -->
+    <div class="dash-header">
+        <h1>World GDP Ranking</h1>
+        <p>2017 World Bank Data &nbsp;·&nbsp; Interactive Economic Dashboard</p>
+    </div>
+
+    <!-- ── Summary Cards (Student 1) ───────────────────── -->
+    <p class="section-label">Snapshot</p>
+    <div id="summaryCards"></div>
+
+    <!-- ══════════════════════════════════════════════════ -->
+    <!-- DATA TABLES — TABBED -->
+    <!-- ══════════════════════════════════════════════════ -->
+    <p class="section-label">Data Tables</p>
+
+    <!-- Tab navigation -->
+    <div class="tab-nav">
+        <button class="tab-btn active" onclick="switchTab('countries', this)">🌍 Country Rankings</button>
+        <button class="tab-btn"        onclick="switchTab('regions',   this)">🗺️ Regions</button>
+        <button class="tab-btn"        onclick="switchTab('income',    this)">💰 Income Groups</button>
+    </div>
+
+    <!-- Tab: Countries -->
+    <div class="tab-pane active" id="tab-countries">
         <div class="filter-sort-section">
-            <input type="text" id="filterInput" placeholder="Filter by name...">
+            <input  type="text"   id="filterInput"  placeholder="Filter by country name…">
             <select id="sortSelect">
                 <option value="none">No Sort</option>
-                <option value="nameAsc">Name (A-Z)</option>
-                <option value="gdpDesc">GDP (High to Low)</option>
+                <option value="nameAsc">Name (A–Z)</option>
+                <option value="gdpDesc">GDP (High → Low)</option>
+                <option value="gdpAsc">GDP (Low → High)</option>
             </select>
-            <button onclick="applyFilterSort()">Filter & Sort</button>
+            <button onclick="applyFilterSort()">Apply</button>
             <button onclick="resetTable()">Reset</button>
         </div>
         <div id="rowCount">Rows: 0</div>
-        
-        <table id="dataTable">
-            <thead>
-                <tr id="tableHeader"></tr>
-            </thead>
-            <tbody id="tableBody">
-            </tbody>
-        </table>
+        <div class="table-wrap">
+            <table id="dataTable">
+                <thead><tr id="tableHeader"></tr></thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
     </div>
-<div id="analysisStats"></div>
-<div id="analysisText"></div>
-<div id="insightsText"></div>
-<div class="chart-controls">
-    <select id="barMode" onchange="updateBarChart()">
-        <option value="top10">Top 10</option>
-        <option value="all">All</option>
-    </select>
-</div>
-<canvas id="barChart"></canvas>
-<div id="barChartPlaceholder">Bar chart will appear here</div>
 
-<canvas id="regionChart"></canvas>
-<div id="regionChartPlaceholder">Region chart will appear here</div>
+    <!-- Tab: Regions -->
+    <div class="tab-pane" id="tab-regions">
+        <div class="table-wrap">
+            <table id="regionTable">
+                <thead id="regionTableHead"></thead>
+                <tbody id="regionTableBody"></tbody>
+            </table>
+        </div>
+    </div>
 
-<canvas id="incomeChart"></canvas>
-<div id="incomeChartPlaceholder">Income chart will appear here</div>
+    <!-- Tab: Income Groups -->
+    <div class="tab-pane" id="tab-income">
+        <div class="table-wrap">
+            <table id="incomeTable">
+                <thead id="incomeTableHead"></thead>
+                <tbody id="incomeTableBody"></tbody>
+            </table>
+        </div>
+    </div>
 
-<canvas id="scatterPlot"></canvas>
-<div id="scatterPlotPlaceholder">Scatter plot will appear here</div>
+    <!-- ══════════════════════════════════════════════════ -->
+    <!-- CHARTS                                             -->
+    <!-- ══════════════════════════════════════════════════ -->
 
-<canvas id="doughnutChart"></canvas>
-<div id="doughnutChartPlaceholder">Doughnut chart will appear here</div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-  
+    <p class="section-label">Country Rankings Chart</p>
+    <div class="charts-grid">
+        <div class="chart-card wide">
+            <div class="bar-controls">
+                <label for="barCountInput">Show:</label>
+                <input  type="number" id="barCountInput" value="10" min="1" max="202" placeholder="10">
+                <select id="barModeSelect">
+                    <option value="top">Highest GDP</option>
+                    <option value="bottom">Lowest GDP</option>
+                </select>
+                <button onclick="updateBarChart()">Update</button>
+            </div>
+            <canvas id="barChart"></canvas>
+            <div id="barChartPlaceholder" class="chart-placeholder">Loading chart…</div>
+        </div>
+    </div>
+
+    <p class="section-label">Regional &amp; Income Analysis</p>
+    <div class="charts-grid">
+        <div class="chart-card">
+            <canvas id="regionChart"></canvas>
+            <div id="regionChartPlaceholder" class="chart-placeholder">Loading…</div>
+        </div>
+        <div class="chart-card">
+            <canvas id="incomeChart"></canvas>
+            <div id="incomeChartPlaceholder" class="chart-placeholder">Loading…</div>
+        </div>
+    </div>
+
+    <p class="section-label">Distribution &amp; Concentration</p>
+    <div class="charts-grid">
+        <div class="chart-card">
+            <canvas id="scatterPlot"></canvas>
+            <div id="scatterPlotPlaceholder" class="chart-placeholder">Loading…</div>
+        </div>
+        <div class="chart-card">
+            <canvas id="doughnutChart"></canvas>
+            <div id="doughnutChartPlaceholder" class="chart-placeholder">Loading…</div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════ -->
+    <!-- ANALYSIS                                           -->
+    <!-- ══════════════════════════════════════════════════ -->
+
+    <p class="section-label">Statistical Analysis</p>
+    <div class="analysis-section">
+        <div id="analysisStats"></div>
+        <div id="analysisText"></div>
+    </div>
+
+    <p class="section-label">Key Insights</p>
+    <div class="analysis-section">
+        <div id="insightsText"></div>
+    </div>
+
+</div><!-- /container -->
+
+<!-- ── Libraries ── load order matters ───────────────────── -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+<!-- Zoom plugin: Hammer (touch) must come before the zoom plugin -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js"></script>
+
+<!-- Student 1 -->
+<script src="data-engine.js"></script>
+
+<!-- Student 2 -->
+<script src="viz-analysis.js"></script>
+
+<!-- Tab switching -->
 <script>
-let RAW_DATA = [];
-window.DS = [];
-
-const INCOME_GROUPS = {
-    WLD: 'World',
-    HIC: 'High income',
-    UMC: 'Upper middle income',
-    LMC: 'Lower middle income',
-    LIC: 'Low income'
-};
-
-const REGIONS = {
-    EAS: 'East Asia & Pacific',
-    ECS: 'Europe & Central Asia',
-    LCN: 'Latin America & Caribbean',
-    MEA: 'Middle East & North Africa',
-    NAC: 'North America',
-    SAS: 'South Asia',
-    SSF: 'Sub-Saharan Africa'
-};
-
-const SPECIAL_TERRITORIES = {
-    HKG: 'Hong Kong SAR, China',
-    MAC: 'Macao SAR, China',
-    PRI: 'Puerto Rico',
-    GUM: 'Guam',
-    IMN: 'Isle of Man'
-};
-
-const chartInstances = {
-    bar: null,
-    region: null,
-    income: null,
-    scatter: null,
-    doughnut: null
-};
-
-function toNumber(value) {
-    const n = parseFloat(String(value ?? '').replace(/[^0-9.-]/g, ''));
-    return Number.isFinite(n) ? n : NaN;
+function switchTab(name, btn) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
 }
-
-function getCountryName(row) {
-    return String(row.CountryName ?? row.name ?? row.Country ?? row['Country Name'] ?? '').trim();
-}
-
-function getGDP(row) {
-    return toNumber(row.GDP ?? row.gdp ?? row.value ?? row['GDP']);
-}
-
-function getRank(row) {
-    const raw = row.Rank ?? row.rank ?? row['Rank'];
-    if (raw === null || raw === undefined || String(raw).trim() === '') return NaN;
-    return parseInt(String(raw).replace(/[^0-9.-]/g, ''), 10);
-}
-
-function getStudyHours(row) {
-    return toNumber(row.studyHours ?? row['study hours'] ?? row['Study Hours']);
-}
-
-function getAttendance(row) {
-    return toNumber(row.attendance ?? row['Attendance']);
-}
-
-function getScore(row) {
-    return toNumber(row.finalScore ?? row.score ?? row['final score'] ?? row['Score']);
-}
-
-function getGrade(row) {
-    const raw = String(row.grade ?? row['Grade'] ?? '').trim().toUpperCase();
-    if (!raw) return '';
-    if (raw.startsWith('G')) return raw.slice(1);
-    return raw;
-}
-
-function getCode(row) {
-    return String(row.Code ?? row.code ?? row.countryCode ?? row.CountryCode ?? '').trim().toUpperCase();
-}
-
-function isValidRow(row) {
-    const name = getCountryName(row);
-    const gdp = getGDP(row);
-    const rankRaw = row.Rank ?? row.rank ?? row['Rank'];
-
-    if (!name || !Number.isFinite(gdp)) return false;
-
-    if (rankRaw !== null && rankRaw !== undefined && String(rankRaw).trim() !== '') {
-        return Number.isFinite(getRank(row));
-    }
-
-    return true;
-}
-
-function cleanData(data) {
-    return Array.isArray(data) ? data.filter(isValidRow) : [];
-}
-
-function getCategory(row) {
-    const code = getCode(row);
-
-    if (INCOME_GROUPS[code]) return { type: 'income', label: INCOME_GROUPS[code] };
-    if (REGIONS[code]) return { type: 'region', label: REGIONS[code] };
-    if (SPECIAL_TERRITORIES[code]) return { type: 'special', label: SPECIAL_TERRITORIES[code] };
-
-    return { type: 'country', label: getCountryName(row) };
-}
-
-function splitByCategory(data) {
-    const grouped = {
-        income: {},
-        region: {},
-        special: {},
-        country: {}
-    };
-
-    cleanData(data).forEach(row => {
-        const cat = getCategory(row);
-        if (!grouped[cat.type][cat.label]) {
-            grouped[cat.type][cat.label] = [];
-        }
-        grouped[cat.type][cat.label].push(row);
-    });
-
-    return grouped;
-}
-
-function getValidEconomicRows(data) {
-    return cleanData(data).filter(row => {
-        const name = getCountryName(row);
-        const gdp = getGDP(row);
-        return name && Number.isFinite(gdp);
-    });
-}
-
-function getTopNByGDP(data, n = 10) {
-    return [...getValidEconomicRows(data)]
-        .sort((a, b) => getGDP(b) - getGDP(a))
-        .slice(0, n);
-}
-
-function getAllByGDP(data) {
-    return [...getValidEconomicRows(data)]
-        .sort((a, b) => getGDP(b) - getGDP(a));
-}
-
-function destroyChart(key) {
-    if (chartInstances[key]) {
-        chartInstances[key].destroy();
-        chartInstances[key] = null;
-    }
-}
-
-function showCanvas(id) {
-    const canvas = document.getElementById(id);
-    if (canvas) canvas.style.display = 'block';
-
-    const placeholder = document.getElementById(`${id}Placeholder`) || document.getElementById(`${id}-placeholder`);
-    if (placeholder) placeholder.style.display = 'none';
-}
-
-function loadDataset() {
-    window.DS = [...RAW_DATA];
-    renderTable(window.DS);
-    renderSummaryCards(window.DS);
-    onDataReady();
-    document.getElementById('rowCount').textContent = `Rows: ${window.DS.length}`;
-}
-
-async function fetchKaggleDataset() {
-    try {
-        const csvUrl = 'data.csv';
-        const response = await fetch(csvUrl);
-        const csvText = await response.text();
-
-        Papa.parse(csvText, {
-            header: true,
-            dynamicTyping: true,
-            skipEmptyLines: true,
-            complete: function(results) {
-                RAW_DATA = results.data || [];
-                console.log('Dataset loaded:', RAW_DATA.length, 'rows');
-                loadDataset();
-            },
-            error: function(error) {
-                console.error('Error parsing CSV:', error);
-            }
-        });
-    } catch (error) {
-        console.error('Error fetching dataset:', error);
-    }
-}
-
-function renderTable(data) {
-    const tableBody = document.getElementById('tableBody');
-    const tableHeader = document.getElementById('tableHeader');
-
-    tableBody.innerHTML = '';
-
-    if (!data || data.length === 0) {
-        const noResultsRow = document.createElement('tr');
-        noResultsRow.innerHTML = '<td colspan="100%">No results found</td>';
-        tableBody.appendChild(noResultsRow);
-        return;
-    }
-
-    const headers = Object.keys(data[0]);
-
-    if (tableHeader.children.length === 0) {
-        headers.forEach(header => {
-            const th = document.createElement('th');
-            th.textContent = header;
-            tableHeader.appendChild(th);
-        });
-    }
-
-    data.forEach(row => {
-        const tr = document.createElement('tr');
-
-        headers.forEach(header => {
-            const td = document.createElement('td');
-            let value = row[header];
-
-            if (typeof value === 'string') {
-                value = value.trim();
-                if (header.toLowerCase() === 'rank') {
-                    const n = parseInt(value, 10);
-                    value = Number.isFinite(n) ? n : '';
-                }
-            }
-
-            td.textContent = value ?? '';
-
-            const numericValue = typeof value === 'number' || (!Number.isNaN(parseFloat(value)) && String(value).trim() !== '');
-            if (header.toLowerCase() === 'rank' || header.toLowerCase() === 'gdp' || numericValue) {
-                td.classList.add('num');
-            }
-
-            if (header.toLowerCase() === 'grade') {
-                const grade = String(value || '').trim().toUpperCase();
-                if (grade) td.classList.add(`g${grade}`);
-            }
-
-            tr.appendChild(td);
-        });
-
-        tableBody.appendChild(tr);
-    });
-}
-
-function renderSummaryCards(data) {
-    const container = document.getElementById('summaryCards');
-    container.innerHTML = '';
-
-    const valid = cleanData(data);
-    if (!valid.length) return;
-
-    const gdpValues = valid.map(getGDP).filter(Number.isFinite);
-    const scoreValues = valid.map(getScore).filter(Number.isFinite);
-    const studyHoursValues = valid.map(getStudyHours).filter(Number.isFinite);
-
-    const avgGDP = gdpValues.length ? gdpValues.reduce((a, b) => a + b, 0) / gdpValues.length : 0;
-    const highestGDPCountry = [...valid].sort((a, b) => getGDP(b) - getGDP(a))[0];
-    const topRankedCountry = [...valid]
-        .filter(row => Number.isFinite(getRank(row)))
-        .sort((a, b) => getRank(a) - getRank(b))[0];
-
-    const meanScore = scoreValues.length ? scoreValues.reduce((a, b) => a + b, 0) / scoreValues.length : 0;
-    const passCount = scoreValues.filter(v => v >= 60).length;
-    const passRate = scoreValues.length ? (passCount / scoreValues.length) * 100 : 0;
-    const avgStudyHours = studyHoursValues.length ? studyHoursValues.reduce((a, b) => a + b, 0) / studyHoursValues.length : 0;
-
-    const cards = [
-        { title: 'Avg GDP', value: `$${Math.round(avgGDP).toLocaleString()}` },
-        { title: 'Highest GDP', value: highestGDPCountry ? getCountryName(highestGDPCountry) : 'N/A' },
-        { title: 'Total Countries', value: valid.length },
-        { title: 'Top Ranked', value: topRankedCountry ? getCountryName(topRankedCountry) : 'N/A' },
-        { title: 'Mean Final Score', value: Number.isFinite(meanScore) ? meanScore.toFixed(2) : 'N/A' },
-        { title: 'Pass Rate', value: Number.isFinite(passRate) ? `${passRate.toFixed(1)}%` : 'N/A' },
-        { title: 'Avg Study Hours', value: Number.isFinite(avgStudyHours) ? avgStudyHours.toFixed(2) : 'N/A' }
-    ];
-
-    cards.forEach(card => {
-        const div = document.createElement('div');
-        div.className = 'card';
-        div.innerHTML = `<div class="card-label">${card.title}</div><div class="card-value">${card.value}</div>`;
-        container.appendChild(div);
-    });
-}
-
-function applyFilterSort() {
-    const filterText = document.getElementById('filterInput').value.toLowerCase();
-    const sortOption = document.getElementById('sortSelect').value;
-
-    let filtered = window.DS.filter(item => {
-        const nameField = String(item.CountryName || item.name || '').toLowerCase();
-        return nameField.includes(filterText);
-    });
-
-    let sorted = [...filtered];
-
-    if (sortOption === 'nameAsc') {
-        sorted.sort((a, b) => String(getCountryName(a)).localeCompare(String(getCountryName(b))));
-    } else if (sortOption === 'gdpDesc') {
-        sorted.sort((a, b) => getGDP(b) - getGDP(a));
-    }
-
-    renderTable(sorted);
-    document.getElementById('rowCount').textContent = `Rows: ${sorted.length}`;
-}
-
-function resetTable() {
-    document.getElementById('filterInput').value = '';
-    document.getElementById('sortSelect').value = 'none';
-    renderTable(window.DS);
-    document.getElementById('rowCount').textContent = `Rows: ${window.DS.length}`;
-}
-
-function variance(arr) {
-    const values = arr.filter(Number.isFinite);
-    if (!values.length) return 0;
-    const mean = values.reduce((a, b) => a + b, 0) / values.length;
-    return values.reduce((sum, v) => sum + ((v - mean) ** 2), 0) / values.length;
-}
-
-function stdDev(arr) {
-    return Math.sqrt(variance(arr));
-}
-
-function pearsonCorr(x, y) {
-    const pairs = [];
-    for (let i = 0; i < Math.min(x.length, y.length); i++) {
-        if (Number.isFinite(x[i]) && Number.isFinite(y[i])) pairs.push([x[i], y[i]]);
-    }
-
-    const n = pairs.length;
-    if (!n) return 0;
-
-    const xs = pairs.map(p => p[0]);
-    const ys = pairs.map(p => p[1]);
-
-    const meanX = xs.reduce((a, b) => a + b, 0) / n;
-    const meanY = ys.reduce((a, b) => a + b, 0) / n;
-
-    let num = 0;
-    let denX = 0;
-    let denY = 0;
-
-    for (let i = 0; i < n; i++) {
-        const dx = xs[i] - meanX;
-        const dy = ys[i] - meanY;
-        num += dx * dy;
-        denX += dx * dx;
-        denY += dy * dy;
-    }
-
-    const den = Math.sqrt(denX * denY);
-    return den === 0 ? 0 : num / den;
-}
-
-function linearRegression(x, y) {
-    const pairs = [];
-    for (let i = 0; i < Math.min(x.length, y.length); i++) {
-        if (Number.isFinite(x[i]) && Number.isFinite(y[i])) pairs.push([x[i], y[i]]);
-    }
-
-    const n = pairs.length;
-    if (!n) return { slope: 0, intercept: 0, r2: 0 };
-
-    const xs = pairs.map(p => p[0]);
-    const ys = pairs.map(p => p[1]);
-
-    const meanX = xs.reduce((a, b) => a + b, 0) / n;
-    const meanY = ys.reduce((a, b) => a + b, 0) / n;
-
-    let numerator = 0;
-    let denominator = 0;
-
-    for (let i = 0; i < n; i++) {
-        numerator += (xs[i] - meanX) * (ys[i] - meanY);
-        denominator += (xs[i] - meanX) ** 2;
-    }
-
-    const slope = denominator === 0 ? 0 : numerator / denominator;
-    const intercept = meanY - slope * meanX;
-
-    let ssTot = 0;
-    let ssRes = 0;
-
-    for (let i = 0; i < n; i++) {
-        const predicted = slope * xs[i] + intercept;
-        ssTot += (ys[i] - meanY) ** 2;
-        ssRes += (ys[i] - predicted) ** 2;
-    }
-
-    const r2 = ssTot === 0 ? 0 : 1 - (ssRes / ssTot);
-
-    return { slope, intercept, r2 };
-}
-
-function drawBarChart(canvasId, data, mode = 'top10', count = 10) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas || typeof Chart === 'undefined') return;
-
-    destroyChart('bar');
-    showCanvas(canvasId);
-
-    const source = mode === 'all' ? getAllByGDP(data) : getTopNByGDP(data, count);
-
-    chartInstances.bar = new Chart(canvas, {
-        type: 'bar',
-        data: {
-            labels: source.map(row => getCountryName(row)),
-            datasets: [{
-                label: 'GDP',
-                data: source.map(row => getGDP(row)),
-                backgroundColor: 'coral',
-                borderColor: 'coral',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            indexAxis: 'y',
-            responsive: true,
-            plugins: {
-                legend: { display: false },
-                title: {
-                    display: true,
-                    text: mode === 'all' ? 'Major Economies, All Valid Rows' : `Major Economies, Top ${count}`
-                }
-            },
-            scales: {
-                x: { beginAtZero: true }
-            }
-        }
-    });
-}
-
-function drawRegionChart(canvasId, data, limit = 7) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas || typeof Chart === 'undefined') return;
-
-    destroyChart('region');
-    showCanvas(canvasId);
-
-    const grouped = splitByCategory(data).region;
-
-    const entries = Object.entries(grouped)
-        .map(([label, rows]) => ({
-            label,
-            value: rows.reduce((sum, row) => sum + getGDP(row), 0)
-        }))
-        .sort((a, b) => b.value - a.value)
-        .slice(0, limit);
-
-    chartInstances.region = new Chart(canvas, {
-        type: 'pie',
-        data: {
-            labels: entries.map(e => e.label),
-            datasets: [{
-                data: entries.map(e => e.value),
-                backgroundColor: ['#a3c9a8', '#8fb996', '#6b9080', '#c9ada7', '#f2cc8f', '#81b29a', '#e07a5f']
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Regional Composition'
-                }
-            }
-        }
-    });
-}
-
-function drawIncomeChart(canvasId, data) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas || typeof Chart === 'undefined') return;
-
-    destroyChart('income');
-    showCanvas(canvasId);
-
-    const grouped = splitByCategory(data).income;
-    const order = ['World', 'High income', 'Upper middle income', 'Lower middle income', 'Low income'];
-
-    const entries = order
-        .map(label => ({
-            label,
-            value: (grouped[label] || []).reduce((sum, row) => sum + getGDP(row), 0)
-        }))
-        .filter(item => item.value > 0);
-
-    chartInstances.income = new Chart(canvas, {
-        type: 'bar',
-        data: {
-            labels: entries.map(e => e.label),
-            datasets: [{
-                label: 'GDP',
-                data: entries.map(e => e.value),
-                backgroundColor: ['#4e79a7', '#59a14f', '#f28e2b', '#e15759', '#76b7b2']
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Income Group GDP Comparison'
-                },
-                legend: { display: false }
-            },
-            scales: {
-                y: { beginAtZero: true }
-            }
-        }
-    });
-}
-
-function drawScatterPlot(canvasId, data) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas || typeof Chart === 'undefined') return;
-
-    destroyChart('scatter');
-    showCanvas(canvasId);
-
-    const points = getValidEconomicRows(data)
-        .map(row => ({
-            x: getAttendance(row),
-            y: getGDP(row),
-            name: getCountryName(row)
-        }))
-        .filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
-
-    if (!points.length) return;
-
-    const xs = points.map(p => p.x);
-    const ys = points.map(p => p.y);
-    const reg = linearRegression(xs, ys);
-
-    const minX = Math.min(...xs);
-    const maxX = Math.max(...xs);
-
-    chartInstances.scatter = new Chart(canvas, {
-        type: 'scatter',
-        data: {
-            datasets: [
-                {
-                    label: 'Countries',
-                    data: points,
-                    backgroundColor: '#8fbc8f',
-                    pointRadius: 5
-                },
-                {
-                    label: 'Regression Line',
-                    type: 'line',
-                    data: [
-                        { x: minX, y: reg.slope * minX + reg.intercept },
-                        { x: maxX, y: reg.slope * maxX + reg.intercept }
-                    ],
-                    borderColor: '#333',
-                    borderWidth: 2,
-                    pointRadius: 0,
-                    tension: 0
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Attendance vs GDP'
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            if (context.dataset.label === 'Countries') {
-                                return `${context.raw.name}: x ${context.raw.x}, y ${context.raw.y}`;
-                            }
-                            return 'Regression line';
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: { title: { display: true, text: 'Attendance' } },
-                y: { title: { display: true, text: 'GDP' } }
-            }
-        }
-    });
-}
-
-function drawDoughnut(canvasId, data) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas || typeof Chart === 'undefined') return;
-
-    destroyChart('doughnut');
-    showCanvas(canvasId);
-
-    const grades = { A: 0, B: 0, C: 0, D: 0 };
-
-    cleanData(data).forEach(row => {
-        const grade = getGrade(row);
-        if (grades[grade] !== undefined) grades[grade]++;
-    });
-
-    const labels = ['A', 'B', 'C', 'D'];
-    const values = labels.map(label => grades[label]);
-    const total = values.reduce((a, b) => a + b, 0);
-
-    chartInstances.doughnut = new Chart(canvas, {
-        type: 'doughnut',
-        data: {
-            labels,
-            datasets: [{
-                data: values,
-                backgroundColor: ['#2f855a', '#68d391', '#ecc94b', '#f56565']
-            }]
-        },
-        options: {
-            responsive: true,
-            cutout: '60%',
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Grade Distribution'
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const count = context.raw;
-                            const pct = total === 0 ? 0 : ((count / total) * 100).toFixed(1);
-                            return `${context.label}: ${count} (${pct}%)`;
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
-function renderAnalysis(data) {
-    const valid = cleanData(data);
-
-    const gdp = valid.map(getGDP).filter(Number.isFinite);
-    const rank = valid.map(getRank).filter(Number.isFinite);
-    const studyHours = valid.map(getStudyHours).filter(Number.isFinite);
-    const attendance = valid.map(getAttendance).filter(Number.isFinite);
-    const score = valid.map(getScore).filter(Number.isFinite);
-
-    const avgGDP = gdp.length ? gdp.reduce((a, b) => a + b, 0) / gdp.length : 0;
-    const avgStudy = studyHours.length ? studyHours.reduce((a, b) => a + b, 0) / studyHours.length : 0;
-    const meanScore = score.length ? score.reduce((a, b) => a + b, 0) / score.length : 0;
-    const passRate = score.length ? (score.filter(v => v >= 60).length / score.length) * 100 : 0;
-
-    const topScorer = [...valid].sort((a, b) => getScore(b) - getScore(a))[0];
-    const topRanked = [...valid].filter(r => Number.isFinite(getRank(r))).sort((a, b) => getRank(a) - getRank(b))[0];
-
-    const corrAttendanceScore = pearsonCorr(attendance, score);
-    const corrStudyScore = pearsonCorr(studyHours, score);
-    const reg = linearRegression(attendance, score);
-
-    const analysisStats = document.getElementById('analysisStats');
-    if (analysisStats) {
-        analysisStats.innerHTML = `
-            <div class="card"><div class="card-label">Mean Final Score</div><div class="card-value">${Number.isFinite(meanScore) ? meanScore.toFixed(2) : 'N/A'}</div></div>
-            <div class="card"><div class="card-label">Top Scorer</div><div class="card-value">${topScorer ? getCountryName(topScorer) : 'N/A'}</div></div>
-            <div class="card"><div class="card-label">Pass Rate</div><div class="card-value">${Number.isFinite(passRate) ? passRate.toFixed(1) + '%' : 'N/A'}</div></div>
-            <div class="card"><div class="card-label">Avg Study Hours</div><div class="card-value">${Number.isFinite(avgStudy) ? avgStudy.toFixed(2) : 'N/A'}</div></div>
-            <div class="card"><div class="card-label">Top Ranked</div><div class="card-value">${topRanked ? getCountryName(topRanked) : 'N/A'}</div></div>
-            <div class="card"><div class="card-label">Avg GDP</div><div class="card-value">${Number.isFinite(avgGDP) ? Math.round(avgGDP).toLocaleString() : 'N/A'}</div></div>
-        `;
-    }
-
-    const analysisText = document.getElementById('analysisText');
-    if (analysisText) {
-        analysisText.innerHTML = `
-            <p>Attendance and final score have a correlation of <span class="highlight">${corrAttendanceScore.toFixed(3)}</span>.</p>
-            <p>Study hours and final score have a correlation of <span class="highlight">${corrStudyScore.toFixed(3)}</span>.</p>
-            <p>The regression slope is <span class="highlight">${reg.slope.toFixed(3)}</span>, the intercept is <span class="highlight">${reg.intercept.toFixed(3)}</span>, and R² is <span class="highlight">${reg.r2.toFixed(3)}</span>.</p>
-            <p>The mean final score is <span class="highlight">${Number.isFinite(meanScore) ? meanScore.toFixed(2) : 'N/A'}</span>, with a pass rate of <span class="highlight">${Number.isFinite(passRate) ? passRate.toFixed(1) + '%' : 'N/A'}</span>.</p>
-        `;
-    }
-}
-
-function renderInsights(data) {
-    const valid = cleanData(data);
-    const score = valid.map(getScore).filter(Number.isFinite);
-    const attendance = valid.map(getAttendance).filter(Number.isFinite);
-    const studyHours = valid.map(getStudyHours).filter(Number.isFinite);
-
-    const meanScore = score.length ? score.reduce((a, b) => a + b, 0) / score.length : 0;
-    const passRate = score.length ? (score.filter(v => v >= 60).length / score.length) * 100 : 0;
-    const avgStudy = studyHours.length ? studyHours.reduce((a, b) => a + b, 0) / studyHours.length : 0;
-    const topScorer = [...valid].sort((a, b) => getScore(b) - getScore(a))[0];
-    const corr = pearsonCorr(attendance, score);
-
-    const insightsText = document.getElementById('insightsText');
-    if (insightsText) {
-        insightsText.innerHTML = `
-            <p>The class mean final score is <span class="highlight">${Number.isFinite(meanScore) ? meanScore.toFixed(2) : 'N/A'}</span>.</p>
-            <p>The top scorer is <span class="highlight">${topScorer ? getCountryName(topScorer) : 'N/A'}</span> with a score of <span class="highlight">${topScorer ? getScore(topScorer).toFixed(0) : 'N/A'}</span>.</p>
-            <p>The pass rate is <span class="highlight">${Number.isFinite(passRate) ? passRate.toFixed(1) + '%' : 'N/A'}</span>, and average study time is <span class="highlight">${Number.isFinite(avgStudy) ? avgStudy.toFixed(2) : 'N/A'}</span>.</p>
-            <p>Attendance and score move together at <span class="highlight">${corr.toFixed(3)}</span>, which helps explain performance patterns.</p>
-        `;
-    }
-}
-
-function initCharts(data) {
-    drawBarChart('barChart', data, 'top10', 10);
-    drawRegionChart('regionChart', data, 7);
-    drawIncomeChart('incomeChart', data);
-    drawScatterPlot('scatterPlot', data);
-    drawDoughnut('doughnutChart', data);
-}
-
-function onDataReady() {
-    const cleaned = cleanData(window.DS);
-    initCharts(cleaned);
-    renderAnalysis(cleaned);
-    renderInsights(cleaned);
-}
-
-function updateBarChart() {
-    const mode = document.getElementById('barMode').value;
-    const data = cleanData(window.DS);
-
-    if (mode === 'all') {
-        drawBarChart('barChart', data, 'all');
-    } else {
-        drawBarChart('barChart', data, 'top10', 10);
-    }
-}
-
-window.addEventListener('load', fetchKaggleDataset);
 </script>
+
 </body>
 </html>
