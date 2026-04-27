@@ -30,6 +30,26 @@
     --glow:        0 0 40px rgba(249,115,22,0.10);
 }
 
+/* Light theme overrides (applied via `data-theme="light"` on <html>) */
+[data-theme="light"] {
+    --bg:          #f8fafc;
+    --bg-2:        #ffffff;
+    --bg-3:        #f1f5f9;
+    --bg-hover:    #e6eef8;
+    --border:      rgba(2,6,23,0.06);
+    --border-hi:   rgba(37,99,235,0.18);
+    --accent:      #2563eb;
+    --accent-2:    #3b82f6;
+    --accent-dim:  rgba(59,130,246,0.06);
+    --blue:        #1e90ff;
+    --green:       #16a34a;
+    --text-1:      #0f172a;
+    --text-2:      #475569;
+    --text-3:      #64748b;
+    --shadow:      0 8px 32px rgba(2,6,23,0.04);
+    --glow:        0 0 40px rgba(59,130,246,0.06);
+}
+
 html { scroll-behavior: smooth; }
 
 body {
@@ -311,3 +331,26 @@ canvas { display: none; }
 .nav-links a:hover {
     color: #f97316;
 }
+
+/* Theme toggle button in navbar */
+.theme-toggle {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-1);
+    padding: 6px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    transition: background 0.15s, border-color 0.15s, transform 0.12s;
+}
+.theme-toggle:hover { background: var(--bg-2); border-color: var(--border-hi); transform: translateY(-1px); }
+
+/* Light-theme specific navbar overrides */
+[data-theme="light"] .navbar {
+    background: rgba(255,255,255,0.92);
+    border-bottom: 1px solid rgba(2,6,23,0.06);
+}
+[data-theme="light"] .nav-brand { color: var(--text-1); }
+[data-theme="light"] .nav-links a { color: var(--text-2); }
+[data-theme="light"] .nav-links a:hover { color: var(--accent); }
