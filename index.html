@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>World GDP Dashboard</title>
+    <link rel="stylesheet" href="FINALS-PROJECT/styles.css">
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar">
+    <div class="nav-brand">World GDP Dashboard</div>
+    <div class="nav-links">
+        <a href="https://quopiem.github.io/DAALab-AY225-SARSALIJO/fINALS-PROJECT/index.html">Dashboard</a>
+    </div>
+    <button id="themeToggle" class="theme-toggle">🌙</button>
+</nav>
+
+<!-- Hero Section -->
+<div class="container" style="text-align:center; padding-top:80px;">
+    
+    <h1 style="
+        font-size: clamp(2.5rem, 6vw, 3.5rem);
+        font-weight: 800;
+        background: linear-gradient(130deg, #f97316, #fb923c, #fde68a);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    ">
+        World GDP Insights
+    </h1>
+
+    <p style="
+        margin-top: 16px;
+        color: var(--text-2);
+        font-size: 1rem;
+        max-width: 600px;
+        margin-inline: auto;
+    ">
+        Explore global economic data through interactive tables, charts, and statistical analysis based on 2017 World Bank data.
+    </p>
+
+    <!-- CTA Button -->
+    <a href="https://quopiem.github.io/DAALab-AY225-SARSALIJO/FINALS-PROJECT/index.html" style="
+        display: inline-block;
+        margin-top: 30px;
+        padding: 12px 28px;
+        background: var(--accent);
+        color: white;
+        border-radius: 10px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: 0.2s;
+    "
+    onmouseover="this.style.background='var(--accent-2)'"
+    onmouseout="this.style.background='var(--accent)'">
+        Open Dashboard →
+    </a>
+
+</div>
+
+<!-- Theme Script (same as dashboard) -->
+<script>
+;(function(){
+    const root = document.documentElement;
+    const toggle = document.getElementById('themeToggle');
+    const stored = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    let theme = stored ? stored : (prefersDark ? 'dark' : 'light');
+    root.setAttribute('data-theme', theme);
+    updateToggle();
+
+    toggle.addEventListener('click', ()=>{
+        theme = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        root.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+        updateToggle();
+    });
+
+    function updateToggle(){
+        toggle.textContent = root.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙';
+    }
+})();
+</script>
+
+</body>
+</html>
