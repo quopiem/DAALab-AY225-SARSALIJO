@@ -1,0 +1,254 @@
+/* ========================================
+   Data Analysis Dashboard - Stylesheet
+   ======================================== */
+
+/* Global Styles */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f5f5f5;
+    color: #333;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Header */
+h1 {
+    margin: 0 0 20px 0;
+    padding: 0;
+    font-size: 28px;
+    color: #2c3e50;
+    font-weight: 600;
+    border-bottom: 3px solid #3498db;
+    padding-bottom: 10px;
+}
+
+/* Summary Cards */
+#summaryCards {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+}
+
+.card {
+    flex: 1;
+    min-width: 200px;
+    padding: 15px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.card-label {
+    font-size: 12px;
+    opacity: 0.9;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 500;
+}
+
+.card-value {
+    font-size: 18px;
+    font-weight: bold;
+    margin-top: 6px;
+}
+
+/* Filter and Sort Section */
+.filter-sort-section {
+    margin: 15px 0;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-radius: 6px;
+}
+
+#filterInput {
+    padding: 8px 12px;
+    width: 200px;
+    font-size: 14px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    transition: border-color 0.2s;
+}
+
+#filterInput:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 4px rgba(52, 152, 219, 0.3);
+}
+
+#sortSelect {
+    padding: 8px 12px;
+    font-size: 14px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: white;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+#sortSelect:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+button {
+    padding: 8px 16px;
+    font-size: 14px;
+    border: none;
+    border-radius: 4px;
+    background-color: #3498db;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+    font-weight: 500;
+}
+
+button:hover {
+    background-color: #2980b9;
+}
+
+button:active {
+    transform: scale(0.98);
+}
+
+/* Row Count */
+#rowCount {
+    margin: 8px 0;
+    padding: 0;
+    font-size: 13px;
+    color: #666;
+    font-weight: 500;
+}
+
+/* Table Styles */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+    background-color: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+thead {
+    background-color: #34495e;
+}
+
+th {
+    background-color: #34495e;
+    color: white;
+    font-weight: 600;
+    padding: 12px;
+    text-align: left;
+    border-bottom: 2px solid #2c3e50;
+    font-size: 13px;
+    text-transform: capitalize;
+    letter-spacing: 0.5px;
+}
+
+tr {
+    transition: background-color 0.15s;
+}
+
+tbody tr:nth-child(odd) {
+    background-color: #f9f9f9;
+}
+
+tbody tr:hover {
+    background-color: #ecf0f1;
+}
+
+td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid #ecf0f1;
+    font-size: 13px;
+}
+
+td.num {
+    text-align: right;
+    font-family: 'Courier New', monospace;
+    padding: 10px 12px;
+}
+
+/* Empty State */
+td[colspan] {
+    text-align: center;
+    color: #999;
+    padding: 20px;
+    font-style: italic;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+
+    .container {
+        padding: 15px;
+    }
+
+    h1 {
+        font-size: 22px;
+    }
+
+    #summaryCards {
+        gap: 10px;
+    }
+
+    .card {
+        min-width: calc(50% - 5px);
+    }
+
+    .filter-sort-section {
+        flex-direction: column;
+    }
+
+    #filterInput {
+        width: 100%;
+    }
+
+    table {
+        font-size: 12px;
+    }
+
+    th, td {
+        padding: 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .card {
+        min-width: 100%;
+    }
+
+    button {
+        width: 100%;
+    }
+}
