@@ -335,6 +335,36 @@ function splitByCategory(data) {
     return grouped;
 }
 </script>
+// data prep helpers for chart
+<script>
+function getGDP(row) {
+    return parseFloat(String(row.GDP ?? row.gdp ?? row.value ?? '')
+        .replace(/[^0-9.-]/g, ''));
+}
 
+function getCountryName(row) {
+    return String(row.CountryName ?? row.name ?? row.Country ?? '')
+        .trim();
+}
+
+function getValidEconomicRows(data) {
+    return data.filter(row => {
+        const name = getCountryName(row);
+        const gdp = getGDP(row);
+        return name && Number.isFinite(gdp);
+    });
+}
+
+function getTopNByGDP(data, n = 10) {
+    return [...getValidEconomicRows(data)]
+        .sort((a, b) => getGDP(b) - getGDP(a))
+        .slice(0, n);
+}
+
+function getAllByGDP(data) {
+    return [...getValidEconomicRows(data)]
+        .sort((a, b) => getGDP(b) - getGDP(a));
+}
+</script>
 </body>
 </html>
