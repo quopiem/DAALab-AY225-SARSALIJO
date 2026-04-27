@@ -55,7 +55,7 @@
 <canvas id="doughnutChart"></canvas>
 <div id="doughnutChartPlaceholder">Doughnut chart will appear here</div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
@@ -504,6 +504,7 @@ function drawRegionChart(canvasId, data, limit = 7) {
     showCanvas(canvasId);
 
     const grouped = splitByCategory(data).region;
+
     const entries = Object.entries(grouped)
         .map(([label, rows]) => ({
             label,
