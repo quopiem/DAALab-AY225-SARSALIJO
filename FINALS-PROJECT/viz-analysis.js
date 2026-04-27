@@ -1,0 +1,912 @@
+// ============================================================
+// Student 2 – feature/viz-analysis
+// World GDP Ranking Dashboard – Chart & Analysis Engine
+// All chart labels kept in raw MILLIONS USD
+// ============================================================
+
+const INCOME_LABELS = {
+    WLD: 'World',
+    HIC: 'High income',
+    UMC: 'Upper middle income',
+    LMC: 'Lower middle income',
+    LIC: 'Low income'
+};
+
+const REGION_LABELS = {
+    EAS: 'East Asia & Pacific',
+    ECS: 'Europe & Central Asia',
+    LCN: 'Latin America & Caribbean',
+    MEA: 'Middle East & North Africa',
+    NAC: 'North America',
+    SAS: 'South Asia',
+    SSF: 'Sub-Saharan Africa'
+};
+
+// ─── Chart Registry ─────────────────────────────────────────
+
+const _charts = { bar: null, region: null, income: null, scatter: null, doughnut: null };
+
+function _destroy(key) {
+    if (_charts[key]) {
+        _charts[key].destroy();
+        _charts[key] = null;
+    }
+}
+
+function _showCanvas(id) {
+    const c = document.getElementById(id);
+    if (c) c.style.display = 'block';
+    const ph = document.getElementById(id + 'Placeholder');
+    if (ph) ph.style.display = 'none';
+}
+
+function zoomPluginAvailable() {
+    try {
+        return !!(window.Chart && Chart.registry && Chart.registry.plugins.get('zoom'));
+    } catch (e) {
+        return false;
+    }
+}
+
+// ─── Statistical Helpers ────────────────────────────────────
+
+function variance(arr) {
+    const v = arr.filter(Number.isFinite);
+    if (!v.length) return 0;
+    const mean = v.reduce((a, b) => a + b, 0) / v.length;
+    return v.reduce((s, x) => s + (x - mean) ** 2, 0) / v.length;
+}
+
+function stdDev(arr) {
+    return Math.sqrt(variance(arr));
+}
+
+function pearsonCorr(x, y) {
+    const pairs = [];
+    for (let i = 0; i < Math.min(x.length, y.length); i++) {
+        if (Number.isFinite(x[i]) && Number.isFinite(y[i])) pairs.push([x[i], y[i]]);
+    }
+
+    const n = pairs.length;
+    if (!n) return NaN;
+
+    const mx = pairs.reduce((s, p) => s + p[0], 0) / n;
+    const my = pairs.reduce((s, p) => s + p[1], 0) / n;
+
+    let num = 0, dx2 = 0, dy2 = 0;
+    for (const [xi, yi] of pairs) {
+        const dx = xi - mx, dy = yi - my;
+        num += dx * dy;
+        dx2 += dx * dx;
+        dy2 += dy * dy;
+    }
+
+    const den = Math.sqrt(dx2 * dy2);
+    return den === 0 ? NaN : num / den;
+}
+
+function linearRegression(x, y) {
+    const pairs = [];
+    for (let i = 0; i < Math.min(x.length, y.length); i++) {
+        if (Number.isFinite(x[i]) && Number.isFinite(y[i])) pairs.push([x[i], y[i]]);
+    }
+
+    const n = pairs.length;
+    if (!n) return { slope: 0, intercept: 0, r2: 0, n: 0 };
+
+    const xs = pairs.map(p => p[0]);
+    const ys = pairs.map(p => p[1]);
+
+    const mx = xs.reduce((a, b) => a + b, 0) / n;
+    const my = ys.reduce((a, b) => a + b, 0) / n;
+
+    let num = 0, den = 0;
+    for (let i = 0; i < n; i++) {
+        num += (xs[i] - mx) * (ys[i] - my);
+        den += (xs[i] - mx) ** 2;
+    }
+
+    const slope = den === 0 ? 0 : num / den;
+    const intercept = my - slope * mx;
+
+    let ssTot = 0, ssRes = 0;
+    for (let i = 0; i < n; i++) {
+        ssTot += (ys[i] - my) ** 2;
+        ssRes += (ys[i] - (slope * xs[i] + intercept)) ** 2;
+    }
+
+    return { slope, intercept, r2: ssTot === 0 ? 1 : 1 - ssRes / ssTot, n };
+}
+
+// ─── Data Partitioning ──────────────────────────────────────
+
+function getCountryRows() {
+    return (window.DS || []).filter(r => {
+        const code = String(r.Code || r.code || '').trim().toUpperCase();
+        if (INCOME_GROUP_CODES.has(code) || REGION_CODES.has(code)) return false;
+
+        const gdp = parseFloat(String(r.GDP || r.gdp || r.value || '').replace(/[^0-9.-]/g, ''));
+        const rank = r.Rank ?? r.rank;
+
+        return Number.isFinite(gdp) && gdp > 0 &&
+            (rank !== null && rank !== undefined && String(rank).trim() !== '');
+    });
+}
+
+function getRegionRows() {
+    return (window.DS || []).filter(r =>
+        REGION_CODES.has(String(r.Code || r.code || '').trim().toUpperCase())
+    );
+}
+
+function getIncomeRows() {
+    return (window.DS || []).filter(r =>
+        INCOME_GROUP_CODES.has(String(r.Code || r.code || '').trim().toUpperCase())
+    );
+}
+
+function getGDPValue(r) {
+    const raw = r.GDP ?? r.gdp ?? r.value ?? r['GDP'];
+    return parseFloat(String(raw ?? '').replace(/[^0-9.-]/g, '')) || 0;
+}
+
+function getNameValue(r) {
+    return String(r.CountryName ?? r.Economy ?? r.name ?? r.Country ?? r['Country Name'] ?? '').trim();
+}
+
+function getRankValue(r) {
+    const raw = r.Rank ?? r.rank;
+    const n = parseInt(String(raw ?? '').replace(/\D/g, ''), 10);
+    return Number.isFinite(n) ? n : Infinity;
+}
+
+// ─── Fixed formatter: ALWAYS show millions ──────────────────
+
+function smartAxisFormatter() {
+    return { divisor: 1, suffix: '', label: 'GDP (Million USD)' };
+}
+
+// ─── Chart: Bar (Countries by GDP) ──────────────────────────
+
+function drawBarChart(canvasId, data, mode, count) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    _destroy('bar');
+    _showCanvas(canvasId);
+
+    let rows = getCountryRows().slice().sort((a, b) => getGDPValue(b) - getGDPValue(a));
+    if (mode === 'bottom') rows = rows.reverse();
+
+    const n = Math.min(parseInt(count) || 10, rows.length);
+    const source = rows.slice(0, n);
+    if (mode === 'bottom') source.reverse();
+
+    const gdpValues = source.map(r => getGDPValue(r));
+    const { divisor, suffix, label: axisLabel } = smartAxisFormatter();
+
+    const ctx = canvas.getContext('2d');
+    const grad = ctx.createLinearGradient(canvas.offsetWidth || 600, 0, 0, 0);
+    grad.addColorStop(0, '#f97316');
+    grad.addColorStop(1, 'rgba(249,115,22,0.3)');
+
+    _charts.bar = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: source.map(r => getNameValue(r)),
+            datasets: [{
+                label: 'GDP (Million USD)',
+                data: gdpValues,
+                backgroundColor: grad,
+                borderRadius: 5,
+                borderSkipped: false
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                title: {
+                    display: true,
+                    text: [
+                        `${mode === 'bottom' ? 'Bottom' : 'Top'} ${n} Economies by GDP (2017)`,
+                        'Values shown in millions USD'
+                    ],
+                    color: '#f1f5f9',
+                    font: { size: 14, weight: '600', family: "'Syne', sans-serif" },
+                    padding: { bottom: 16 }
+                },
+                tooltip: {
+                    backgroundColor: '#1e293b',
+                    titleColor: '#f97316',
+                    bodyColor: '#cbd5e1',
+                    callbacks: {
+                        label: ctx => ` $${Math.round(ctx.raw).toLocaleString()} `
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    title: { display: true, text: axisLabel, color: '#64748b', font: { size: 11 } },
+                    grid: { color: 'rgba(148,163,184,0.07)' },
+                    ticks: {
+                        color: '#64748b',
+                        callback: v => '$' + Math.round(v / divisor).toLocaleString() + ''
+                    }
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: { color: '#94a3b8', font: { size: 11 } }
+                }
+            }
+        }
+    });
+}
+
+// ─── Chart: Region Pie ───────────────────────────────────────
+
+function drawRegionChart(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    _destroy('region');
+    _showCanvas(canvasId);
+
+    const rows = getRegionRows();
+    const entries = rows
+        .map(r => ({
+            label: getNameValue(r) || REGION_LABELS[String(r.Code || r.code || '').toUpperCase()],
+            value: getGDPValue(r)
+        }))
+        .filter(e => e.value > 0)
+        .sort((a, b) => b.value - a.value);
+
+    const palette = ['#f97316', '#0ea5e9', '#a3e635', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4'];
+
+    _charts.region = new Chart(canvas, {
+        type: 'pie',
+        data: {
+            labels: entries.map(e => e.label),
+            datasets: [{
+                data: entries.map(e => e.value),
+                backgroundColor: palette,
+                borderWidth: 2,
+                borderColor: '#0f172a'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'GDP Share by World Region (2017)',
+                    color: '#f1f5f9',
+                    font: { size: 14, weight: '600', family: "'Syne', sans-serif" },
+                    padding: { bottom: 16 }
+                },
+                legend: { labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11 } } },
+                tooltip: {
+                    backgroundColor: '#1e293b',
+                    titleColor: '#f97316',
+                    bodyColor: '#cbd5e1',
+                    callbacks: {
+                        label: ctx => {
+                            const total = entries.reduce((s, e) => s + e.value, 0);
+                            const pct = total ? ((ctx.raw / total) * 100).toFixed(1) : 0;
+                            return ` $${Math.round(ctx.raw).toLocaleString()}  (${pct}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// ─── Inject Income Controls ────────────────────────────────
+
+function injectIncomeControls() {
+    const card = document.querySelector('#incomeChart')?.closest('.chart-card');
+    if (!card || document.getElementById('incomeControls')) return;
+
+    const ctrl = document.createElement('div');
+    ctrl.id = 'incomeControls';
+    ctrl.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 4px 4px;';
+    ctrl.innerHTML = `
+        <button onclick="resetIncomeZoom()"
+                style="background:#0ea5e9;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;">
+            ⟳ Reset Zoom
+        </button>
+        <span style="color:#475569;font-size:11px;">· Scroll to zoom · Drag to pan</span>
+    `;
+    card.insertBefore(ctrl, card.querySelector('canvas'));
+}
+
+function resetIncomeZoom() {
+    if (_charts.income && typeof _charts.income.resetZoom === 'function') {
+        _charts.income.resetZoom();
+    }
+}
+
+// ─── Chart: Income Group Bar ─────────────────────────────────
+
+function drawIncomeChart(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    _destroy('income');
+    _showCanvas(canvasId);
+    injectIncomeControls();
+
+    const order = ['High income', 'Upper middle income', 'Lower middle income', 'Low income'];
+    const rows = getIncomeRows();
+
+    const entries = order.map(label => {
+        const row = rows.find(r =>
+            getNameValue(r) === label ||
+            INCOME_LABELS[String(r.Code || r.code || '').toUpperCase()] === label
+        );
+        return { label, value: row ? getGDPValue(row) : 0 };
+    }).filter(e => e.value > 0);
+
+    const colors = ['#f97316', '#0ea5e9', '#a3e635', '#ef4444'];
+    const { divisor, label: axisLabel } = smartAxisFormatter();
+
+    const zoomOpts = zoomPluginAvailable() ? {
+        zoom: {
+            zoom: {
+                wheel: { enabled: true, speed: 0.1 },
+                pinch: { enabled: true },
+                mode: 'y'
+            },
+            pan: {
+                enabled: true,
+                mode: 'y'
+            },
+            limits: {
+                y: { min: 0 }
+            }
+        }
+    } : {};
+
+    _charts.income = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: entries.map(e => e.label),
+            datasets: [{
+                label: 'GDP (Million USD)',
+                data: entries.map(e => e.value),
+                backgroundColor: colors,
+                borderRadius: 8,
+                borderSkipped: false
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: [
+                        'GDP by Income Group (2017)',
+                        'All figures shown in millions USD'
+                    ],
+                    color: '#f1f5f9',
+                    font: { size: 14, weight: '600', family: "'Syne', sans-serif" },
+                    padding: { bottom: 16 }
+                },
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1e293b',
+                    titleColor: '#f97316',
+                    bodyColor: '#cbd5e1',
+                    callbacks: {
+                        label: ctx => ` $${Math.round(ctx.raw).toLocaleString()} `
+                    }
+                },
+                ...zoomOpts
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: axisLabel, color: '#64748b', font: { size: 11 } },
+                    grid: { color: 'rgba(148,163,184,0.07)' },
+                    ticks: {
+                        color: '#64748b',
+                        callback: v => '$' + Math.round(v / divisor).toLocaleString() + ''
+                    }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#94a3b8', font: { size: 11 } }
+                }
+            }
+        }
+    });
+}
+
+// ─── Inject Scatter Controls ─────────────────────────────────
+
+function injectScatterControls() {
+    const card = document.querySelector('#scatterPlot')?.closest('.chart-card');
+    if (!card || document.getElementById('scatterControls')) return;
+
+    const ctrl = document.createElement('div');
+    ctrl.id = 'scatterControls';
+    ctrl.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 4px 4px;';
+    ctrl.innerHTML = `
+        <label style="color:#94a3b8;font-size:12px;">Show:</label>
+        <input type="number" id="scatterCountInput" value="202" min="5" max="202"
+               style="width:64px;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:4px 8px;font-size:12px;">
+        <select id="scatterOrderSelect"
+                style="background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:4px 8px;font-size:12px;">
+            <option value="high">Highest GDP</option>
+            <option value="low">Lowest GDP</option>
+        </select>
+        <button onclick="updateScatterPlot()"
+                style="background:#f97316;color:#fff;border:none;border-radius:6px;padding:5px 14px;font-size:12px;cursor:pointer;font-weight:600;">Update</button>
+        <button onclick="resetScatterZoom()"
+                style="background:#0ea5e9;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;">⟳ Reset Zoom</button>
+        <span style="color:#475569;font-size:11px;">· Scroll to zoom · Click+drag to pan</span>
+    `;
+    card.insertBefore(ctrl, card.querySelector('canvas'));
+}
+
+function resetScatterZoom() {
+    if (_charts.scatter && typeof _charts.scatter.resetZoom === 'function') {
+        _charts.scatter.resetZoom();
+    }
+}
+
+// ─── Chart: Scatter – Rank vs GDP ────────────────────────────
+
+function drawScatterPlot(canvasId, countLimit, order) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    _destroy('scatter');
+    _showCanvas(canvasId);
+    injectScatterControls();
+
+    const n = Math.min(parseInt(countLimit) || 202, 202);
+    const sortOrder = order || 'high';
+
+    let rows = getCountryRows().slice().sort((a, b) => getGDPValue(b) - getGDPValue(a));
+    if (sortOrder === 'low') rows = rows.reverse();
+
+    const source = rows.slice(0, n);
+
+    const points = source
+        .map(r => ({ x: getRankValue(r), y: getGDPValue(r), name: getNameValue(r) }))
+        .filter(p => Number.isFinite(p.x) && p.x !== Infinity && p.y > 0);
+
+    if (!points.length) return;
+
+    const xs = points.map(p => p.x), ys = points.map(p => p.y);
+    const reg = linearRegression(xs, ys);
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+
+    const zoomOpts = zoomPluginAvailable() ? {
+        zoom: {
+            zoom: { wheel: { enabled: true, speed: 0.1 }, pinch: { enabled: true }, mode: 'xy' },
+            pan: { enabled: true, mode: 'xy' }
+        }
+    } : {};
+
+    _charts.scatter = new Chart(canvas, {
+        type: 'scatter',
+        data: {
+            datasets: [
+                {
+                    label: 'Countries',
+                    data: points,
+                    backgroundColor: 'rgba(74,222,128,0.55)',
+                    borderColor: '#4ade80',
+                    borderWidth: 1,
+                    pointRadius: 4,
+                    pointHoverRadius: 7
+                },
+                {
+                    label: 'Trend line',
+                    type: 'line',
+                    data: Array.from({ length: 40 }, (_, i) => {
+                        const x = minX + (maxX - minX) * i / 39;
+                        return { x, y: Math.max(0, reg.slope * x + reg.intercept) };
+                    }),
+                    borderColor: '#f97316',
+                    borderWidth: 2,
+                    borderDash: [6, 3],
+                    pointRadius: 0,
+                    tension: 0.3,
+                    fill: false
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: [
+                        `GDP vs Rank — ${sortOrder === 'low' ? 'Lowest' : 'Highest'} ${n} of ${getCountryRows().length} economies (2017)`,
+                        'GDP shown in millions USD · Each dot = 1 country · ' + (zoomPluginAvailable() ? 'Scroll to zoom, drag to pan' : 'Use controls above to filter')
+                    ],
+                    color: '#f1f5f9',
+                    font: { size: 14, weight: '600', family: "'Syne', sans-serif" },
+                    padding: { bottom: 12 }
+                },
+                legend: { labels: { color: '#94a3b8', boxWidth: 12 } },
+                tooltip: {
+                    backgroundColor: '#1e293b',
+                    titleColor: '#4ade80',
+                    bodyColor: '#cbd5e1',
+                    callbacks: {
+                        label: ctx => ctx.dataset.label === 'Countries'
+                            ? [
+                                ` ${ctx.raw.name}`,
+                                ` Rank: #${ctx.raw.x}`,
+                                ` GDP: $${Math.round(ctx.raw.y).toLocaleString()} `
+                            ]
+                            : ' Trend line'
+                    }
+                },
+                ...zoomOpts
+            },
+            scales: {
+                x: {
+                    title: { display: true, text: 'Rank (1 = largest economy)', color: '#64748b' },
+                    grid: { color: 'rgba(148,163,184,0.07)' },
+                    ticks: { color: '#64748b' }
+                },
+                y: {
+                    title: { display: true, text: 'GDP (Million USD)', color: '#64748b' },
+                    grid: { color: 'rgba(148,163,184,0.07)' },
+                    ticks: {
+                        color: '#64748b',
+                        callback: v => '$' + Math.round(v).toLocaleString() + ''
+                    }
+                }
+            }
+        }
+    });
+}
+
+function updateScatterPlot() {
+    const n = parseInt(document.getElementById('scatterCountInput')?.value || '202');
+    const order = document.getElementById('scatterOrderSelect')?.value || 'high';
+    drawScatterPlot('scatterPlot', n, order);
+}
+
+// ─── Inject Doughnut Controls ────────────────────────────────
+
+function injectDoughnutControls() {
+    const card = document.querySelector('#doughnutChart')?.closest('.chart-card');
+    if (!card || document.getElementById('doughnutControls')) return;
+
+    const ctrl = document.createElement('div');
+    ctrl.id = 'doughnutControls';
+    ctrl.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 4px 4px;';
+    ctrl.innerHTML = `
+        <label style="color:#94a3b8;font-size:12px;">Tier 1 top:</label>
+        <input type="number" id="doughnutTop1Input" value="5" min="1" max="50"
+               style="width:56px;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:4px 8px;font-size:12px;"
+               title="Number of countries in the top tier">
+        <label style="color:#94a3b8;font-size:12px;">Tier 2 up to rank:</label>
+        <input type="number" id="doughnutTop2Input" value="20" min="2" max="100"
+               style="width:56px;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:4px 8px;font-size:12px;"
+               title="Mid-tier spans from (Tier 1 + 1) through this rank">
+        <button onclick="updateDoughnut()"
+                style="background:#f97316;color:#fff;border:none;border-radius:6px;padding:5px 14px;font-size:12px;cursor:pointer;font-weight:600;">Update</button>
+    `;
+    card.insertBefore(ctrl, card.querySelector('canvas'));
+}
+
+// ─── Chart: Doughnut – GDP Concentration ─────────────────────
+
+function drawDoughnut(canvasId, top1Count, top2Max) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    _destroy('doughnut');
+    _showCanvas(canvasId);
+    injectDoughnutControls();
+
+    const t1 = Math.max(1, parseInt(top1Count) || 5);
+    const t2end = Math.max(t1 + 1, parseInt(top2Max) || 20);
+
+    const rows = getCountryRows().sort((a, b) => getGDPValue(b) - getGDPValue(a));
+    const total = rows.reduce((s, r) => s + getGDPValue(r), 0);
+
+    const tier1val = rows.slice(0, t1).reduce((s, r) => s + getGDPValue(r), 0);
+    const tier2val = rows.slice(t1, t2end).reduce((s, r) => s + getGDPValue(r), 0);
+    const tier3val = rows.slice(t2end).reduce((s, r) => s + getGDPValue(r), 0);
+
+    const pct = v => total ? (v / total * 100).toFixed(1) : '0.0';
+    const mil = v => '$' + Math.round(v).toLocaleString() + ' ';
+
+    const segments = [
+        {
+            shortLabel: `Top ${t1}`,
+            label: `Top ${t1} · ${pct(tier1val)}% · ${mil(tier1val)}`,
+            value: tier1val,
+            detail: rows.slice(0, t1).slice(0, 3).map(r => getNameValue(r)).join(', ') + (t1 > 3 ? ` +${t1 - 3} more` : ''),
+            count: Math.min(t1, rows.length)
+        },
+        {
+            shortLabel: `Ranks ${t1 + 1}–${t2end}`,
+            label: `Ranks ${t1 + 1}–${t2end} · ${pct(tier2val)}% · ${mil(tier2val)}`,
+            value: tier2val,
+            detail: `${Math.min(t2end - t1, rows.length - t1)} countries`,
+            count: Math.min(t2end - t1, rows.length - t1)
+        },
+        {
+            shortLabel: 'Rest of World',
+            label: `Rest of World · ${pct(tier3val)}% · ${mil(tier3val)}`,
+            value: tier3val,
+            detail: `${Math.max(0, rows.length - t2end)} countries`,
+            count: Math.max(0, rows.length - t2end)
+        }
+    ];
+
+    _charts.doughnut = new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+            labels: segments.map(s => s.label),
+            datasets: [{
+                data: segments.map(s => s.value),
+                backgroundColor: ['#f97316', '#0ea5e9', '#475569'],
+                borderWidth: 2,
+                borderColor: '#0f172a'
+            }]
+        },
+        options: {
+            responsive: true,
+            cutout: '62%',
+            plugins: {
+                title: {
+                    display: true,
+                    text: [
+                        'GDP Concentration by Country Tier (2017)',
+                        `Total GDP of ${rows.length} ranked nations = ${mil(total)} · Adjust tiers with controls above`
+                    ],
+                    color: '#f1f5f9',
+                    font: { size: 14, weight: '600', family: "'Syne', sans-serif" },
+                    padding: { bottom: 12 }
+                },
+                legend: { labels: { color: '#94a3b8', boxWidth: 14, font: { size: 11 } } },
+                tooltip: {
+                    backgroundColor: '#1e293b',
+                    titleColor: '#f97316',
+                    bodyColor: '#cbd5e1',
+                    callbacks: {
+                        title: ctx => segments[ctx[0].dataIndex].shortLabel,
+                        label: ctx => {
+                            const s = segments[ctx.dataIndex];
+                            return [
+                                ` Share: ${pct(s.value)}% of all ranked-country GDP`,
+                                ` Total: ${mil(s.value)}`,
+                                ` Countries: ${s.count}`,
+                                ` Includes: ${s.detail}`
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function updateDoughnut() {
+    const t1 = parseInt(document.getElementById('doughnutTop1Input')?.value || '5');
+    const t2 = parseInt(document.getElementById('doughnutTop2Input')?.value || '20');
+    drawDoughnut('doughnutChart', t1, t2);
+}
+
+// ─── Render: Region Table ────────────────────────────────────
+
+function renderRegionTable() {
+    const tbody = document.getElementById('regionTableBody');
+    const thead = document.getElementById('regionTableHead');
+    if (!tbody) return;
+
+    const rows = getRegionRows().sort((a, b) => getGDPValue(b) - getGDPValue(a));
+    const worldRow = (window.DS || []).find(r => String(r.Code || r.code || '').toUpperCase() === 'WLD');
+    const worldGDP = worldRow ? getGDPValue(worldRow) : 0;
+
+    if (thead) thead.innerHTML = `<tr><th>Region</th><th class="num-h">GDP (Million USD)</th><th class="num-h">% of World</th></tr>`;
+
+    tbody.innerHTML = '';
+    rows.forEach(r => {
+        const gdp = getGDPValue(r);
+        const pct = worldGDP ? ((gdp / worldGDP) * 100).toFixed(2) : '—';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${getNameValue(r)}</td><td class="num">$${Math.round(gdp).toLocaleString()} </td><td class="num">${pct}%</td>`;
+        tbody.appendChild(tr);
+    });
+}
+
+// ─── Render: Income Table ────────────────────────────────────
+
+function renderIncomeTable() {
+    const tbody = document.getElementById('incomeTableBody');
+    const thead = document.getElementById('incomeTableHead');
+    if (!tbody) return;
+
+    const order = ['World', 'High income', 'Upper middle income', 'Lower middle income', 'Low income'];
+    const worldRow = (window.DS || []).find(r => String(r.Code || r.code || '').toUpperCase() === 'WLD');
+    const worldGDP = worldRow ? getGDPValue(worldRow) : 0;
+
+    if (thead) thead.innerHTML = `<tr><th>Income Group</th><th class="num-h">GDP (Million USD)</th><th class="num-h">% of World</th></tr>`;
+
+    tbody.innerHTML = '';
+    const incomeRows = (window.DS || []).filter(r => INCOME_GROUP_CODES.has(String(r.Code || r.code || '').toUpperCase()));
+
+    order.forEach(label => {
+        const row = incomeRows.find(r => INCOME_LABELS[String(r.Code || r.code || '').toUpperCase()] === label);
+        if (!row) return;
+
+        const gdp = getGDPValue(row);
+        const pct = worldGDP && label !== 'World' ? ((gdp / worldGDP) * 100).toFixed(2) : '—';
+        const tr = document.createElement('tr');
+        tr.className = label === 'World' ? 'world-row' : '';
+        tr.innerHTML = `<td>${label}</td><td class="num">$${Math.round(gdp).toLocaleString()} </td><td class="num">${pct}</td>`;
+        tbody.appendChild(tr);
+    });
+}
+
+// ─── Render: Statistical Analysis ───────────────────────────
+
+function renderAnalysis() {
+    const countries = getCountryRows();
+    const gdpValues = countries.map(r => getGDPValue(r)).filter(v => v > 0);
+    const ranks = countries.map(r => getRankValue(r)).filter(v => Number.isFinite(v) && v !== Infinity);
+
+    if (!gdpValues.length) return;
+
+    const n = gdpValues.length;
+    const sum = gdpValues.reduce((a, b) => a + b, 0);
+    const mean = sum / n;
+
+    const sorted = [...gdpValues].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    const median = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+
+    const sd = stdDev(gdpValues);
+    const cv = mean ? (sd / mean * 100) : 0;
+
+    const top = countries.slice().sort((a, b) => getGDPValue(b) - getGDPValue(a));
+    const top5pct = sum ? (top.slice(0, 5).reduce((s, r) => s + getGDPValue(r), 0) / sum * 100).toFixed(1) : 0;
+    const top10pct = sum ? (top.slice(0, 10).reduce((s, r) => s + getGDPValue(r), 0) / sum * 100).toFixed(1) : 0;
+
+    const reg = linearRegression(ranks, gdpValues);
+    const corr = pearsonCorr(ranks, gdpValues);
+
+    const statsEl = document.getElementById('analysisStats');
+    if (statsEl) {
+        const fmt = v => '$' + Math.round(v).toLocaleString() + ' ';
+        statsEl.innerHTML = [
+            { label: 'Countries Ranked', value: n },
+            { label: 'Total Country GDP', value: '$' + Math.round(sum).toLocaleString() + ' ' },
+            { label: 'Mean GDP', value: fmt(mean) },
+            { label: 'Median GDP', value: fmt(median) },
+            { label: 'Std Deviation', value: fmt(sd) },
+            { label: 'Coeff. of Variation', value: cv.toFixed(1) + '%' },
+            { label: 'Largest Economy', value: getNameValue(top[0]) },
+            { label: 'Top 5 Share', value: top5pct + '% of total' },
+            { label: 'Top 10 Share', value: top10pct + '% of total' }
+        ].map(c => `<div class="stat-card"><div class="card-label">${c.label}</div><div class="card-value">${c.value}</div></div>`).join('');
+    }
+
+    const textEl = document.getElementById('analysisText');
+    if (textEl) {
+        const corrDesc = isNaN(corr) ? 'N/A' : Math.abs(corr).toFixed(3);
+        const corrDir = corr < 0
+            ? 'negative — expected, since a higher rank number means a smaller GDP'
+            : 'positive';
+
+        textEl.innerHTML = `
+            <div class="analysis-block">
+                <h3>Distribution Analysis</h3>
+                <p>The mean GDP of <span class="highlight">$${Math.round(mean).toLocaleString()} </span> is far
+                   higher than the median of <span class="highlight">$${Math.round(median).toLocaleString()} </span>,
+                   confirming a <strong>heavily right-skewed distribution</strong> — a small number of dominant economies
+                   pull the average up significantly.</p>
+                <p>The coefficient of variation is <span class="highlight">${cv.toFixed(1)}%</span>, indicating
+                   <strong>extreme dispersion</strong> in country-level GDP.</p>
+            </div>
+            <div class="analysis-block">
+                <h3>Concentration Analysis</h3>
+                <p>The top 5 economies alone control <span class="highlight">${top5pct}%</span> of total ranked-country GDP,
+                   while the top 10 account for <span class="highlight">${top10pct}%</span> — a stark illustration of
+                   global economic inequality.</p>
+            </div>
+            <div class="analysis-block">
+                <h3>Rank–GDP Correlation</h3>
+                <p>Pearson r between rank and GDP = <span class="highlight">${corrDesc}</span> (${corrDir}).</p>
+                <p>Regression: GDP = <span class="highlight">${reg.slope.toFixed(0)}</span> × Rank +
+                   <span class="highlight">${Math.round(reg.intercept).toLocaleString()}</span>,
+                   R² = <span class="highlight">${reg.r2.toFixed(4)}</span>
+                   — confirms a very strong (non-linear) relationship between rank and GDP.</p>
+            </div>
+        `;
+    }
+}
+
+// ─── Render: Insights ────────────────────────────────────────
+
+function renderInsights() {
+    const countries = getCountryRows().sort((a, b) => getGDPValue(b) - getGDPValue(a));
+    const gdpValues = countries.map(r => getGDPValue(r)).filter(v => v > 0);
+    if (!gdpValues.length) return;
+
+    const n = gdpValues.length;
+    const total = gdpValues.reduce((a, b) => a + b, 0);
+
+    const top1 = countries[0];
+    const bottom1 = countries[n - 1];
+
+    const top5pct = (countries.slice(0, 5).reduce((s, r) => s + getGDPValue(r), 0) / total * 100).toFixed(1);
+    const ratio = bottom1
+        ? (getGDPValue(top1) / getGDPValue(bottom1)).toLocaleString(undefined, { maximumFractionDigits: 0 })
+        : 'N/A';
+
+    const regionRows = getRegionRows().sort((a, b) => getGDPValue(b) - getGDPValue(a));
+    const hicRow = (window.DS || []).find(r => String(r.Code || r.code || '').toUpperCase() === 'HIC');
+    const licRow = (window.DS || []).find(r => String(r.Code || r.code || '').toUpperCase() === 'LIC');
+    const incomeRatio = (hicRow && licRow && getGDPValue(licRow))
+        ? (getGDPValue(hicRow) / getGDPValue(licRow)).toFixed(0)
+        : 'N/A';
+
+    const el = document.getElementById('insightsText');
+    if (!el) return;
+
+    el.innerHTML = `
+        <p>The 2017 World GDP dataset reveals a stark concentration of economic power:
+           <span class="highlight">${getNameValue(top1)}</span> leads with
+           <span class="highlight">$${Math.round(getGDPValue(top1)).toLocaleString()} </span>,
+           while the top 5 economies hold <span class="highlight">${top5pct}%</span>
+           of all ranked-country GDP despite comprising just ${((5 / n) * 100).toFixed(1)}% of ranked nations.</p>
+        <p>The gap between largest and smallest is staggering —
+           <span class="highlight">${getNameValue(top1)}</span> produces roughly
+           <span class="highlight">${ratio}×</span> the GDP of
+           <span class="highlight">${getNameValue(bottom1)}</span>.</p>
+        <p>At the regional level, <span class="highlight">${getNameValue(regionRows[0])}</span> dominates,
+           dwarfing the smallest bloc <span class="highlight">${getNameValue(regionRows[regionRows.length - 1])}</span>.</p>
+        <p>High-income nations generate <span class="highlight">${incomeRatio}×</span> the GDP of low-income nations.
+           The scatter plot confirms a steep non-linear decay — most wealth is compressed into a narrow band at the top.</p>
+    `;
+}
+
+// ─── Init ────────────────────────────────────────────────────
+
+function initCharts() {
+    const countN = parseInt(document.getElementById('barCountInput')?.value || '10');
+    const countMode = document.getElementById('barModeSelect')?.value || 'top';
+    drawBarChart('barChart', null, countMode, countN);
+    drawRegionChart('regionChart');
+    drawIncomeChart('incomeChart');
+    drawScatterPlot('scatterPlot', 202, 'high');
+    drawDoughnut('doughnutChart', 5, 20);
+}
+
+// ─── Called by Student 1 after data loads ───────────────────
+
+function onDataReady() {
+    Chart.defaults.font.family = "'Syne', sans-serif";
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.borderColor = 'rgba(148,163,184,0.08)';
+
+    initCharts();
+    renderRegionTable();
+    renderIncomeTable();
+    renderAnalysis();
+    renderInsights();
+}
+
+// ─── Bar chart update ────────────────────────────────────────
+
+function updateBarChart() {
+    const n = parseInt(document.getElementById('barCountInput')?.value || '10');
+    const mode = document.getElementById('barModeSelect')?.value || 'top';
+    drawBarChart('barChart', null, mode, n);
+}

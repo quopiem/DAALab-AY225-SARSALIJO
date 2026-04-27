@@ -3,244 +3,169 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Data Analysis Dashboard</title>
+    <title>World GDP Ranking 2017</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Data Analysis Dashboard</h1>
-        
-        <div id="summaryCards"></div>
+    <nav class="navbar">
+    <div class="nav-brand">World GDP Dashboard</div>
+    <div class="nav-links">
+        <a href="#summaryCards">Snapshot/Datatable</a>
+        <a href="#barChart">Charts</a>
+        <a href="#analysisStats">Analysis</a>
+    </div>
+</nav>
+<div class="container">
+
+    <!-- Header -->
+    <div class="dash-header">
+        <h1>World GDP Ranking</h1>
+        <p>2017 World Bank Data &nbsp;·&nbsp; Interactive Economic Dashboard</p>
+    </div>
+
+    <!-- ── Summary Cards (Student 1) ───────────────────── -->
+    <p class="section-label">Snapshot</p>
+    <div id="summaryCards"></div>
+
+    <!-- ══════════════════════════════════════════════════ -->
+    <!-- DATA TABLES — TABBED -->
+    <!-- ══════════════════════════════════════════════════ -->
+    <p class="section-label">Data Tables</p>
+
+    <!-- Tab navigation -->
+    <div class="tab-nav">
+        <button class="tab-btn active" onclick="switchTab('countries', this)">🌍 Country Rankings</button>
+        <button class="tab-btn"        onclick="switchTab('regions',   this)">🗺️ Regions</button>
+        <button class="tab-btn"        onclick="switchTab('income',    this)">💰 Income Groups</button>
+    </div>
+
+    <!-- Tab: Countries -->
+    <div class="tab-pane active" id="tab-countries">
         <div class="filter-sort-section">
-            <input type="text" id="filterInput" placeholder="Filter by name...">
+            <input  type="text"   id="filterInput"  placeholder="Filter by country name…">
             <select id="sortSelect">
                 <option value="none">No Sort</option>
-                <option value="nameAsc">Name (A-Z)</option>
-                <option value="gdpDesc">GDP (High to Low)</option>
+                <option value="nameAsc">Name (A–Z)</option>
+                <option value="gdpDesc">GDP (High → Low)</option>
+                <option value="gdpAsc">GDP (Low → High)</option>
             </select>
-            <button onclick="applyFilterSort()">Filter & Sort</button>
+            <button onclick="applyFilterSort()">Apply</button>
             <button onclick="resetTable()">Reset</button>
         </div>
         <div id="rowCount">Rows: 0</div>
-        
-        <table id="dataTable">
-            <thead>
-                <tr id="tableHeader"></tr>
-            </thead>
-            <tbody id="tableBody">
-            </tbody>
-        </table>
+        <div class="table-wrap">
+            <table id="dataTable">
+                <thead><tr id="tableHeader"></tr></thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script>
-        // Global dataset variable
-        let RAW_DATA = [];
-        window.DS = [];
+    <!-- Tab: Regions -->
+    <div class="tab-pane" id="tab-regions">
+        <div class="table-wrap">
+            <table id="regionTable">
+                <thead id="regionTableHead"></thead>
+                <tbody id="regionTableBody"></tbody>
+            </table>
+        </div>
+    </div>
 
-        // TASK A: loadDataset()
-        function loadDataset() {
-            // Copy RAW_DATA into window.DS using spread operator
-            window.DS = [...RAW_DATA];
+    <!-- Tab: Income Groups -->
+    <div class="tab-pane" id="tab-income">
+        <div class="table-wrap">
+            <table id="incomeTable">
+                <thead id="incomeTableHead"></thead>
+                <tbody id="incomeTableBody"></tbody>
+            </table>
+        </div>
+    </div>
 
-            // Call renderTable with the dataset
-            renderTable(window.DS);
+    <!-- ══════════════════════════════════════════════════ -->
+    <!-- CHARTS                                             -->
+    <!-- ══════════════════════════════════════════════════ -->
 
-            // Call renderSummaryCards with the dataset
-            renderSummaryCards(window.DS);
+    <p class="section-label">Country Rankings Chart</p>
+    <div class="charts-grid">
+        <div class="chart-card wide">
+            <div class="bar-controls">
+                <label for="barCountInput">Show:</label>
+                <input  type="number" id="barCountInput" value="10" min="1" max="202" placeholder="10">
+                <select id="barModeSelect">
+                    <option value="top">Highest GDP</option>
+                    <option value="bottom">Lowest GDP</option>
+                </select>
+                <button onclick="updateBarChart()">Update</button>
+            </div>
+            <canvas id="barChart"></canvas>
+            <div id="barChartPlaceholder" class="chart-placeholder">Loading chart…</div>
+        </div>
+    </div>
 
-            // Call onDataReady for Student 2's code initialization
-            onDataReady();
+    <p class="section-label">Regional &amp; Income Analysis</p>
+    <div class="charts-grid">
+        <div class="chart-card">
+            <canvas id="regionChart"></canvas>
+            <div id="regionChartPlaceholder" class="chart-placeholder">Loading…</div>
+        </div>
+        <div class="chart-card">
+            <canvas id="incomeChart"></canvas>
+            <div id="incomeChartPlaceholder" class="chart-placeholder">Loading…</div>
+        </div>
+    </div>
 
-            // Update #rowCount text
-            document.getElementById('rowCount').textContent = `Rows: ${window.DS.length}`;
-        }
+    <p class="section-label">Distribution &amp; Concentration</p>
+    <div class="charts-grid">
+        <div class="chart-card">
+            <canvas id="scatterPlot"></canvas>
+            <div id="scatterPlotPlaceholder" class="chart-placeholder">Loading…</div>
+        </div>
+        <div class="chart-card">
+            <canvas id="doughnutChart"></canvas>
+            <div id="doughnutChartPlaceholder" class="chart-placeholder">Loading…</div>
+        </div>
+    </div>
 
-        // Fetch and parse Kaggle dataset from CSV
-        async function fetchKaggleDataset() {
-            try {
-                // Replace this URL with your Kaggle dataset CSV URL or use a local file
-                const csvUrl = 'data.csv'; // Change to your CSV file path or public URL
-                
-                const response = await fetch(csvUrl);
-                const csvText = await response.text();
+    <!-- ══════════════════════════════════════════════════ -->
+    <!-- ANALYSIS                                           -->
+    <!-- ══════════════════════════════════════════════════ -->
 
-                // Parse CSV using PapaParse
-                Papa.parse(csvText, {
-                    header: true,
-                    dynamicTyping: true,
-                    skipEmptyLines: true,
-                    complete: function(results) {
-                        RAW_DATA = results.data;
-                        console.log('Dataset loaded:', RAW_DATA.length, 'rows');
-                        loadDataset();
-                    },
-                    error: function(error) {
-                        console.error('Error parsing CSV:', error);
-                    }
-                });
-            } catch (error) {
-                console.error('Error fetching dataset:', error);
-            }
-        }
+    <p class="section-label">Statistical Analysis</p>
+    <div class="analysis-section">
+        <div id="analysisStats"></div>
+        <div id="analysisText"></div>
+    </div>
 
-        // Placeholder functions for Student 2
-        function renderTable(data) {
-            const tableBody = document.getElementById('tableBody');
-            
-            // Clear existing table rows
-            tableBody.innerHTML = '';
+    <p class="section-label">Key Insights</p>
+    <div class="analysis-section">
+        <div id="insightsText"></div>
+    </div>
 
-            // Show "No results" row if data is empty
-            if (!data || data.length === 0) {
-                const noResultsRow = document.createElement('tr');
-                noResultsRow.innerHTML = '<td colspan="100%">No results</td>';
-                tableBody.appendChild(noResultsRow);
-                return;
-            }
+</div><!-- /container -->
 
-            // Get column headers from first row
-            const headers = Object.keys(data[0]);
+<!-- ── Libraries ── load order matters ───────────────────── -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-            // Build header row if not already present
-            const headerRow = document.getElementById('tableHeader');
-            if (headerRow.children.length === 0) {
-                headers.forEach(header => {
-                    const th = document.createElement('th');
-                    th.textContent = header;
-                    headerRow.appendChild(th);
-                });
-            }
+<!-- Zoom plugin: Hammer (touch) must come before the zoom plugin -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js"></script>
 
-            // Build table rows from data
-            data.forEach(row => {
-                const tr = document.createElement('tr');
-                
-                headers.forEach(header => {
-                    const td = document.createElement('td');
-                    let value = row[header];
-                    
-                    // Trim whitespace and convert to proper type
-                    if (typeof value === 'string') {
-                        value = value.trim();
-                        // Convert Rank to number
-                        if (header === 'Rank') {
-                            value = parseInt(value, 10);
-                        }
-                    }
-                    
-                    td.textContent = value;
+<!-- Student 1 -->
+<script src="data-engine.js"></script>
 
-                    // Apply 'num' class to Rank and GDP columns
-                    if (header === 'Rank' || header === 'GDP' || typeof value === 'number') {
-                        td.classList.add('num');
-                    }
+<!-- Student 2 -->
+<script src="viz-analysis.js"></script>
 
-                    tr.appendChild(td);
-                });
+<!-- Tab switching -->
+<script>
+function switchTab(name, btn) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+}
+</script>
 
-                tableBody.appendChild(tr);
-            });
-        }
-
-        function renderSummaryCards(data) {
-            const container = document.getElementById('summaryCards');
-            container.innerHTML = '';
-
-            if (!data || data.length === 0) {
-                return;
-            }
-
-            // Calculate statistics
-            const gdpValues = data.map(d => parseFloat(String(d.GDP || 0).replace(/[^0-9.-]/g, ''))).filter(v => !isNaN(v));
-            const avgGDP = gdpValues.length > 0 ? (gdpValues.reduce((a, b) => a + b, 0) / gdpValues.length).toFixed(0) : 0;
-            
-            const highestGDPCountry = data.reduce((max, curr) => {
-                const currGDP = parseFloat(String(curr.GDP || 0).replace(/[^0-9.-]/g, ''));
-                const maxGDP = parseFloat(String(max.GDP || 0).replace(/[^0-9.-]/g, ''));
-                return currGDP > maxGDP ? curr : max;
-            });
-
-            const totalCountries = data.length;
-
-            const topRankedCountry = data.reduce((best, curr) => {
-                const currRank = parseInt(curr.Rank || 999);
-                const bestRank = parseInt(best.Rank || 999);
-                return currRank < bestRank ? curr : best;
-            });
-
-            // Create summary cards
-            const cards = [
-                { title: 'Avg GDP', value: `$${parseInt(avgGDP).toLocaleString()}` },
-                { title: 'Highest GDP', value: highestGDPCountry.CountryName },
-                { title: 'Total Countries', value: totalCountries },
-                { title: 'Top Ranked', value: topRankedCountry.CountryName }
-            ];
-
-            cards.forEach(card => {
-                const div = document.createElement('div');
-                div.className = 'card';
-                div.innerHTML = `<div class="card-label">${card.title}</div><div class="card-value">${card.value}</div>`;
-                container.appendChild(div);
-            });
-        }
-
-        function onDataReady() {
-            // Student 2 should implement this
-            console.log('onDataReady called - data is ready for processing');
-        }
-
-        // TASK C: applyFilterSort()
-        function applyFilterSort() {
-            const filterText = document.getElementById('filterInput').value.toLowerCase();
-            const sortOption = document.getElementById('sortSelect').value;
-
-            // Filter data by country name (case-insensitive)
-            let filtered = window.DS.filter(item => {
-                const nameField = String(item.CountryName || '').toLowerCase();
-                return nameField.includes(filterText);
-            });
-
-            // Sort based on selected option
-            let sorted = [...filtered];
-            if (sortOption === 'nameAsc') {
-                sorted.sort((a, b) => {
-                    const nameA = String(a.CountryName || '').toUpperCase();
-                    const nameB = String(b.CountryName || '').toUpperCase();
-                    return nameA.localeCompare(nameB);
-                });
-            } else if (sortOption === 'gdpDesc') {
-                sorted.sort((a, b) => {
-                    const gdpA = parseFloat(String(a.GDP || 0).replace(/[^0-9.-]/g, ''));
-                    const gdpB = parseFloat(String(b.GDP || 0).replace(/[^0-9.-]/g, ''));
-                    return gdpB - gdpA;
-                });
-            }
-
-            // Render filtered and sorted table
-            renderTable(sorted);
-
-            // Update row count
-            document.getElementById('rowCount').textContent = `Rows: ${sorted.length}`;
-        }
-
-        // TASK D: resetTable()
-        function resetTable() {
-            // Clear filter input
-            document.getElementById('filterInput').value = '';
-
-            // Reset sort select
-            document.getElementById('sortSelect').value = 'none';
-
-            // Render original dataset
-            renderTable(window.DS);
-
-            // Update row count
-            document.getElementById('rowCount').textContent = `Rows: ${window.DS.length}`;
-        }
-
-        // Load dataset on page load
-        window.addEventListener('load', fetchKaggleDataset);
-    </script>
 </body>
 </html>
