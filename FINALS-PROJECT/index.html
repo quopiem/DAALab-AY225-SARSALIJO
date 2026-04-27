@@ -31,7 +31,29 @@
             </tbody>
         </table>
     </div>
+<div id="analysisStats"></div>
+<div id="analysisText"></div>
+<div id="insightsText"></div>
+<div class="chart-controls">
+    <select id="barMode" onchange="updateBarChart()">
+        <option value="top10">Top 10</option>
+        <option value="all">All</option>
+    </select>
+</div>
+<canvas id="barChart"></canvas>
+<div id="barChartPlaceholder">Bar chart will appear here</div>
 
+<canvas id="regionChart"></canvas>
+<div id="regionChartPlaceholder">Region chart will appear here</div>
+
+<canvas id="incomeChart"></canvas>
+<div id="incomeChartPlaceholder">Income chart will appear here</div>
+
+<canvas id="scatterPlot"></canvas>
+<div id="scatterPlotPlaceholder">Scatter plot will appear here</div>
+
+<canvas id="doughnutChart"></canvas>
+<div id="doughnutChartPlaceholder">Doughnut chart will appear here</div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -757,6 +779,17 @@ function onDataReady() {
     initCharts(cleaned);
     renderAnalysis(cleaned);
     renderInsights(cleaned);
+}
+
+function updateBarChart() {
+    const mode = document.getElementById('barMode').value;
+    const data = cleanData(window.DS);
+
+    if (mode === 'all') {
+        drawBarChart('barChart', data, 'all');
+    } else {
+        drawBarChart('barChart', data, 'top10', 10);
+    }
 }
 
 window.addEventListener('load', fetchKaggleDataset);
