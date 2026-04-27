@@ -14,6 +14,7 @@
         <a href="#barChart">Charts</a>
         <a href="#analysisStats">Analysis</a>
     </div>
+    <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme">🌙</button>
 </nav>
 <div class="container">
 
@@ -165,6 +166,31 @@ function switchTab(name, btn) {
     document.getElementById('tab-' + name).classList.add('active');
     btn.classList.add('active');
 }
+</script>
+
+<!-- Theme toggle: persist in localStorage and respect prefers-color-scheme -->
+<script>
+;(function(){
+    const root = document.documentElement;
+    const toggle = document.getElementById('themeToggle');
+    if(!toggle) return;
+    const stored = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    let theme = stored ? stored : (prefersDark ? 'dark' : 'light');
+    root.setAttribute('data-theme', theme);
+    updateToggle();
+    toggle.addEventListener('click', ()=>{
+        theme = (root.getAttribute('data-theme') === 'dark') ? 'light' : 'dark';
+        root.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+        updateToggle();
+    });
+    function updateToggle(){
+        const isDark = root.getAttribute('data-theme') === 'dark';
+        toggle.textContent = isDark ? '☀️' : '🌙';
+        toggle.title = isDark ? 'Switch to light theme' : 'Switch to dark theme';
+    }
+})();
 </script>
 
 </body>
