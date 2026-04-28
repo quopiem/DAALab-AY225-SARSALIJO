@@ -1,4 +1,6 @@
 CountryCode,Rank,CountryName,GDP
+PHL,0,Phiippines," 15,000,000 "
+USA,1,,United States," 19,485,394 "
 CHN,2,China," 12,237,700 "
 JPN,3,Japan," 4,872,415 "
 DEU,4,Germany," 3,693,204 "
